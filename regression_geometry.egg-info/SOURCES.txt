@@ -2,6 +2,7 @@ README.md
 pyproject.toml
 regression_geometry/__init__.py
 regression_geometry/cheatsheet.py
+regression_geometry/colors.py
 regression_geometry/core.py
 regression_geometry/data.py
 regression_geometry/exercises.py
