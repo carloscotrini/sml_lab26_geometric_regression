@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Data files
+*.csv
+# Exception: canonical dataset bundled with the package
+!regression_geometry/data/*.csv
