@@ -4,4 +4,10 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+.eggs/
 .pytest_cache/
+
+# Data files
+*.csv
+# Exception: canonical dataset bundled with the package
+!regression_geometry/data/*.csv
