@@ -1,3 +1,5 @@
+> **⚠️ CRITICAL: Every notebook Cell 1 must follow the Colab installation pattern in COLAB_SETUP.md. Read that file before editing any notebook.**
+
 # NOTEBOOK_STYLE_GUIDE.md
 
 ## Regression from the Inside: Seeing the Geometry of Linear Models
