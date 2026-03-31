@@ -11,3 +11,12 @@ build/
 *.csv
 # Exception: canonical dataset bundled with the package
 !regression_geometry/data/*.csv
+
+# Virtual environments
+.venv/
+
+# Test artifacts
+test_results.txt
+test_cheatsheet.html
+notebooks/executed_*.ipynb
+notebooks/regression_geometry_cheatsheet.html

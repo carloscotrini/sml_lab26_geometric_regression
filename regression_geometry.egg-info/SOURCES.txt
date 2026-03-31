@@ -17,5 +17,6 @@ regression_geometry.egg-info/top_level.txt
 regression_geometry/tests/__init__.py
 regression_geometry/tests/test_core.py
 regression_geometry/tests/test_data.py
+regression_geometry/tests/test_interactive.py
 regression_geometry/tests/test_plots.py
 regression_geometry/tests/test_scoreboard.py
