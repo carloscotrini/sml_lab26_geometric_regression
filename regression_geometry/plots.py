@@ -848,12 +848,13 @@ def plot_eigenvalue_ellipsoid(
     views : str — "default" for single 3D view
     **kwargs
     """
-    p = len(ell.eigenvalues)
+    _evals = ell.eigenvalues() if callable(ell.eigenvalues) else ell.eigenvalues
+    p = len(_evals)
     if p > 3:
         return plot_eigenvalue_bar(ell, title=title, figsize=figsize, **kwargs)
 
-    axes_len = ell.axis_lengths
-    Q = ell.eigenvectors
+    axes_len = ell.axis_lengths() if callable(getattr(ell, 'axis_lengths', None)) else ell.axis_lengths
+    Q = ell.eigenvectors() if callable(ell.eigenvectors) else ell.eigenvectors
 
     dpi_kw = {k: v for k, v in kwargs.items() if k == 'dpi'}
     fig = plt.figure(figsize=figsize, **dpi_kw)
@@ -904,7 +905,7 @@ def plot_eigenvalue_ellipsoid(
                 color=colors.COLUMN_SPACE, linewidth=3)
         ax.set_aspect('equal')
 
-    cond = ell.condition_number
+    cond = ell.condition_number() if callable(ell.condition_number) else ell.condition_number
     cond_str = f'{cond:.1f}' if np.isfinite(cond) else '∞'
     ax.set_title(f'{title}\nCondition number: {cond_str}',
                  fontsize=colors.TITLE_SIZE)
@@ -933,7 +934,7 @@ def plot_eigenvalue_bar(
     log_scale : bool — if True, use log y-axis
     **kwargs
     """
-    evals = ell.eigenvalues
+    evals = ell.eigenvalues() if callable(ell.eigenvalues) else ell.eigenvalues
     p = len(evals)
 
     dpi_kw = {k: v for k, v in kwargs.items() if k == 'dpi'}
@@ -953,7 +954,7 @@ def plot_eigenvalue_bar(
     if log_scale and all(evals > 0):
         ax.set_yscale('log')
 
-    cond = ell.condition_number
+    cond = ell.condition_number() if callable(ell.condition_number) else ell.condition_number
     cond_str = f'{cond:.1f}' if np.isfinite(cond) else '∞'
     ax.text(0.98, 0.95, f'κ = {cond_str}',
             transform=ax.transAxes, fontsize=colors.LABEL_SIZE,
