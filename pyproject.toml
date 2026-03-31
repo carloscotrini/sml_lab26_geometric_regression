@@ -21,6 +21,9 @@ dependencies = [
 [tool.setuptools.packages.find]
 include = ["regression_geometry*"]
 
+[tool.setuptools.package-data]
+regression_geometry = ["data/*.csv"]
+
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",

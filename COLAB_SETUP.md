@@ -31,7 +31,7 @@ try:
 except ImportError:
     # Running in Colab or fresh environment — install from GitHub
     print("Installing regression_geometry package...")
-    !pip install -q git+https://github.com/YOUR_USERNAME/regression-geometry-course.git
+    !pip install -q git+https://github.com/carloscotrini/sml_lab26_geometric_regression.git
     print("Done! If you see import errors below, restart the runtime (Runtime → Restart) and run this cell again.")
 
 # --- Standard imports ---
@@ -71,7 +71,7 @@ np.random.seed(42)
 
 ## Rules
 
-1. **Replace `YOUR_USERNAME`** with the actual GitHub username or org before release. During development, leave it as a placeholder — the Integration Pass (Issue 10) will do a global find-and-replace.
+1. **GitHub URL** is set to `carloscotrini/sml_lab26_geometric_regression`. If the repo moves, update all notebooks accordingly.
 
 2. **The `!pip install -q` line uses the `!` shell syntax** which works in both Colab and Jupyter. The `-q` flag keeps output minimal.
 
