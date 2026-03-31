@@ -15,6 +15,15 @@ build/
 # Virtual environments
 .venv/
 
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
 # Test artifacts
 test_results.txt
 test_cheatsheet.html
