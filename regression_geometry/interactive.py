@@ -476,12 +476,13 @@ def plot_eigenvalue_ellipsoid(
     interactive_extras: dict = None,
     **kwargs,
 ) -> "go.Figure":
-    p = len(ell.eigenvalues)
+    _evals = ell.eigenvalues() if callable(ell.eigenvalues) else ell.eigenvalues
+    p = len(_evals)
     if p > 3:
         return plot_eigenvalue_bar(ell, title=title, figsize=figsize, **kwargs)
 
-    lengths = ell.axis_lengths
-    Q = ell.eigenvectors
+    lengths = ell.axis_lengths() if callable(getattr(ell, 'axis_lengths', None)) else ell.axis_lengths
+    Q = ell.eigenvectors() if callable(ell.eigenvectors) else ell.eigenvectors
 
     fig = go.Figure()
     if p == 3:
@@ -507,7 +508,7 @@ def plot_eigenvalue_ellipsoid(
     else:
         fig.add_trace(go.Scatter(x=[-lengths[0], lengths[0]], y=[0, 0], mode="lines",
                                  line=dict(color=colors.COLUMN_SPACE, width=3), name="Line"))
-    cond = ell.condition_number
+    cond = ell.condition_number() if callable(ell.condition_number) else ell.condition_number
     cond_str = f"{cond:.1f}" if np.isfinite(cond) else "inf"
     fig.update_layout(**DEFAULT_LAYOUT, title=f"{title}<br>Condition number: {cond_str}",
                       width=figsize[0] * 80, height=figsize[1] * 80)
@@ -523,7 +524,7 @@ def plot_eigenvalue_bar(
     interactive_extras: dict = None,
     **kwargs,
 ) -> "go.Figure":
-    evals = ell.eigenvalues
+    evals = ell.eigenvalues() if callable(ell.eigenvalues) else ell.eigenvalues
     p = len(evals)
     max_e = evals[0] if evals[0] > 0 else 1.0
     bar_colors = []
@@ -536,7 +537,7 @@ def plot_eigenvalue_bar(
         x=list(range(p)), y=evals, marker_color=bar_colors,
         hovertemplate="Component %{x}<br>Eigenvalue: %{y:.4f}<extra></extra>",
     )])
-    cond = ell.condition_number
+    cond = ell.condition_number() if callable(ell.condition_number) else ell.condition_number
     cond_str = f"{cond:.1f}" if np.isfinite(cond) else "inf"
     fig.add_annotation(x=0.98, y=0.95, xref="paper", yref="paper",
                        text=f"kappa = {cond_str}", showarrow=False, font=dict(size=11))
