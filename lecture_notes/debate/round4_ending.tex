@@ -1,0 +1,201 @@
+%======================================================================
+\section{The Limits of the Geometric Framework}\label{sec:limits}
+%======================================================================
+
+The Projection Theorem is powerful but not omniscient.
+Three fundamental limitations bound the geometric framework, and
+intellectual honesty demands that we name them clearly.
+
+\subsection{Causality: the geometry cannot choose the wall}
+
+The geometry tells you \emph{how well} you are projecting.
+It cannot tell you \emph{whether you are projecting onto the right wall}.
+Omitted variable bias (\S\ref{sec:failures}) is invisible to every
+geometric diagnostic: the residuals are still perpendicular, $R^2$ still
+decomposes via Pythagoras, the hat matrix is still idempotent.
+The Scoreboard reads green for a perfectly projected regression on the
+wrong column space.
+
+To choose the right wall, you need \emph{causal reasoning}: directed
+acyclic graphs, potential outcomes, natural experiments, instrumental
+variables. These are structural tools, not geometric ones.
+No amount of staring at shadows will tell you whether the flashlight
+is aimed at the right surface.
+
+\subsection{The inner product: whose notion of ``closest''?}
+
+Everything in these notes assumed the Euclidean inner product---all
+observations weighted equally, all errors independent.
+If observations have \textbf{heteroscedastic} errors
+($\text{Var}(\varepsilon_i) = \sigma_i^2$) or are
+\textbf{autocorrelated},
+the inner product is wrong.
+The ``perpendicular'' is not truly perpendicular in the correct metric,
+and the ``closest point'' is not truly closest.
+
+\textbf{Generalised Least Squares (GLS)} fixes this by replacing the
+Euclidean inner product $\ip{\bm{u}}{\bm{v}}=\bm{u}^\top\bm{v}$ with
+$\ip{\bm{u}}{\bm{v}}_\Omega = \bm{u}^\top\bm{\Omega}^{-1}\bm{v}$,
+where $\bm{\Omega} = \text{Var}(\bm{\varepsilon})$.
+The Projection Theorem still applies, but in a different geometry---a
+tilted space where ``perpendicular'' has a new meaning:
+\[
+  \bhat_{\text{GLS}}
+  = (\bX^\top\bm{\Omega}^{-1}\bX)^{-1}\bX^\top\bm{\Omega}^{-1}\by.
+\]
+The moral: the geometry generalises, but only if you choose the right
+inner product.
+
+\subsection{Linearity: the column space is flat}
+
+The column space is \emph{flat}---a hyperplane through the origin.
+If the true relationship is curved, the best flat projection may be
+a poor representation, like pressing a globe onto a table.
+Polynomial features enlarge the column space to include some curvature,
+but the bias-variance trade-off (Notebook~3's overfitting trap) limits
+how far this can go.
+Kernel methods, trees, and neural networks define curved ``column
+spaces''---function spaces that lie beyond the reach of linear
+projection geometry.
+
+The Projection Theorem is not wrong in these settings.  It is simply
+not enough.
+
+
+%======================================================================
+\section{Summary: The Geometric Rosetta Stone}\label{sec:rosetta}
+%======================================================================
+
+\subsection*{Closing the circle}
+
+In 1801, Carl Friedrich Gauss took 41 noisy astronomical observations and
+dropped a perpendicular from them onto the subspace of Keplerian orbits.
+The shadow---the nearest point on that subspace---told him where to
+point the telescope.  On New Year's Eve, von~Zach found Ceres within
+half a degree of the predicted position.
+
+Every time you call \texttt{lm()} in R or
+\texttt{sklearn.LinearRegression().fit()} in Python, you perform
+the same act that Gauss performed: you cast a shadow of noisy data
+onto a subspace of possible fitted values, you measure the
+perpendicular gap that remains, and you trust the right angle.
+
+The mathematics has not changed in two centuries.  Only the notation
+is different.
+
+\subsection*{The Rosetta Stone}
+
+Every concept in OLS regression has a geometric face and an algebraic
+face.  Table~\ref{tab:rosetta} provides the complete correspondence.
+Where the Pythagorean decomposition and $R^2$ require demeaned vectors,
+this is noted explicitly.
+
+\begin{table}[ht]
+\centering
+\caption{The Geometric Rosetta Stone.}\label{tab:rosetta}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Statistical concept} & \textbf{Geometric interpretation} & \textbf{Formula / characterisation} \\
+\midrule
+\multicolumn{3}{@{}l}{\textit{Core projection}} \\[2pt]
+Fitted values $\yhat$ & Shadow on the wall & $\bH\by$ \\
+Residuals $\be$ & Perpendicular gap & $(\bI-\bH)\by$ \\
+Coefficients $\bhat$ & Coordinates of the shadow & $(\bX^\top\bX)^{-1}\bX^\top\by$ \\
+Normal equations & Orthogonality condition & $\bX^\top\be=\bm{0}$ \\
+Intercept $\hat{\beta}_0$ & Ensures $\bar{e}=0$; centres the & $\bm{1}\in\Col(\bX)$ guarantees \\
+ & projection around the data mean & $\be\perp\bm{1}$ \\[4pt]
+\midrule
+\multicolumn{3}{@{}l}{\textit{Decomposition and fit quality (demeaned vectors $\tilde{\by}=\by-\bar{y}\bm{1}$, $\tilde{\yhat}=\yhat-\bar{y}\bm{1}$)}} \\[2pt]
+SST $=$ SSR $+$ SSE & Pythagorean theorem & $\norm{\tilde{\by}}^2=\norm{\tilde{\yhat}}^2+\norm{\be}^2$ \\
+$R^2$ & Squared cosine of angle & $\cos^2\theta = \norm{\tilde{\yhat}}^2/\norm{\tilde{\by}}^2$ \\
+Degrees of freedom & Dimension of the residual & $\dim\bigl(\Col(\bX)^\perp\bigr) = n-p$ \\
+ & subspace & \\
+Adjusted $R^2$ & $R^2$ corrected for dimension & $1 - \frac{\norm{\be}^2/(n-p)}{\norm{\tilde{\by}}^2/(n-1)}$ \\[4pt]
+\midrule
+\multicolumn{3}{@{}l}{\textit{Projection operators and diagnostics}} \\[2pt]
+Hat matrix $\bH$ & Projection operator & $\bH^2=\bH,\;\bH^\top=\bH$ \\
+Leverage $h_{ii}$ & Arm length in column space & $\diag(\bH)$ \\
+Cook's distance $D_i$ & Arm length $\times$ surprise & $\propto h_{ii}\cdot e_i^2$ \\
+Gauss--Markov (BLUE) & Closest point in subspace & Projection Theorem \\[4pt]
+\midrule
+\multicolumn{3}{@{}l}{\textit{Structure and partial effects}} \\[2pt]
+FWL theorem & Sequential orthogonal projections & $\bhat_2 = (\bX_2^\top\bM_1\bX_2)^{-1}\bX_2^\top\bM_1\by$ \\
+Multicollinearity & Thin, nearly degenerate column space & $\kappa(\bX^\top\bX)\gg 1$ \\
+OVB & Wrong column space & $\text{Bias} = \bm{\Gamma}\bm{\beta}_2$ \\[4pt]
+\midrule
+\multicolumn{3}{@{}l}{\textit{Regularisation (constrained optimisation: trading bias for stability)}} \\[2pt]
+Ridge ($L^2$) & Constrained optimisation within a sphere; & Shrinks unstable eigenvector \\
+ & trades bias for variance reduction & directions: $\lambda_k/(\lambda_k+\lambda)$ \\
+LASSO ($L^1$) & Constrained optimisation within a diamond; & Corner solutions $\Rightarrow$ exact zeros \\
+ & trades bias for sparsity & $\Rightarrow$ automatic variable selection \\[4pt]
+\midrule
+\multicolumn{3}{@{}l}{\textit{Inference}} \\[2pt]
+$F$-test & Gap between two projections & $F = \frac{\norm{\yhat-\yhat_R}^2/q}{\norm{\be}^2/(n-p)}$ \\
+Confidence ellipsoid & Region of plausible shadows & Axes $\propto 1/\sqrt{\lambda_k}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection*{The story in sixteen lines}
+
+\begin{center}
+\fbox{\parbox{0.88\textwidth}{\centering\itshape
+Regression is a projection.\\
+Coefficients are coordinates of the shadow.\\
+The residual is perpendicular to the column space.\\
+The intercept guarantees the residuals have mean zero.\\
+$R^2$ is the squared cosine of an angle between demeaned vectors.\\
+Variance decomposition is Pythagoras applied to a right triangle.\\
+Degrees of freedom count the dimensions the residual can roam.\\
+Gauss--Markov says: no linear unbiased estimator gets closer.\\
+Controlling for a variable means projecting it away first.\\
+Leverage measures how far each point reaches into the column space.\\
+Influence is leverage times surprise.\\
+Multicollinearity flattens the column space to a sliver.\\
+Omitted variables tilt the column space to the wrong wall.\\
+The $F$-test measures the gap between two nested projections.\\
+Ridge and LASSO trade bias for stability---they are not projections.\\
+And geometry alone cannot tell you which wall to aim at.
+}}
+\end{center}
+
+\bigskip
+
+\noindent
+Gauss pointed a pencil at the sky and found an asteroid.  You point a
+line of code at a dataset and find a pattern.  In both cases, the
+method is the same: drop a perpendicular, read the shadow, respect the
+right angle.
+
+\medskip
+
+\noindent
+The geometry was always there, hiding inside every formula you
+memorised and every $p$-value you reported.  These notes did not
+create it.  They just turned on the light.
+
+%======================================================================
+% References
+%======================================================================
+
+\bigskip
+\noindent\textbf{Further reading.}
+\begin{itemize}[nosep]
+  \item S.\,M.\ Stigler, \emph{The History of Statistics: The Measurement of
+        Uncertainty before 1900}, Harvard University Press, 1986.
+        \textit{Chapter~4 gives a superb account of Gauss, Ceres, and the
+        birth of least squares.}
+  \item G.\,W.\ Dunnington, \emph{Gauss: Titan of Science}, Mathematical
+        Association of America, 2004 (reprint).
+        \textit{The definitive biography; see chapters on the Ceres
+        prediction and the development of the method of least squares.}
+  \item G.\,A.\,F.\ Seber, \emph{Linear Regression Analysis}, Wiley, 1977.
+  \item R.\ Davidson and J.\,G.\ MacKinnon, \emph{Estimation and Inference
+        in Econometrics}, Oxford University Press, 1993.
+  \item R.\ Christensen, \emph{Plane Answers to Complex Questions: The Theory
+        of Linear Models}, 4th ed., Springer, 2011.
+  \item S.\ Weisberg, \emph{Applied Linear Regression}, 4th ed., Wiley, 2014.
+\end{itemize}
+
+\end{document}

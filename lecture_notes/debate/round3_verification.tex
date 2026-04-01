@@ -1,0 +1,636 @@
+% =====================================================================
+% Round 3: Mathematical Verification Report
+% =====================================================================
+%
+% This document reports the results of an independent, computation-by-
+% computation verification of every numerical example in round2_examples.tex
+% and every proof in round2_math.tex.  Errors are flagged with severity
+% ratings: CRITICAL (wrong final answer), ERROR (wrong intermediate value
+% that could mislead a student), or NOTE (cosmetic or rounding issue).
+%
+% Structure:
+%   Part A — Numerical verification of the six examples
+%   Part B — Logical audit of the four proofs
+%   Part C — Consistency with lecture_notes.tex (macros, labels, refs)
+%   Part D — Corrected LaTeX for all items requiring changes
+%
+% =====================================================================
+
+
+% =====================================================================
+%                     PART A: NUMERICAL VERIFICATION
+% =====================================================================
+
+\section*{Part A: Numerical Verification of Examples}
+
+% ---------------------------------------------------------------------
+% EXAMPLE 1: "Your First Regression in R^3"
+% Verdict: ALL CORRECT
+% ---------------------------------------------------------------------
+
+\subsection*{Example 1 (Your First Regression in $\R^3$)}
+
+\textbf{Verdict: ALL CORRECT.}  Every matrix product, inverse, and
+arithmetic operation was recomputed from scratch.
+
+\begin{itemize}[nosep]
+  \item $\bX^\top\bX = \bigl(\begin{smallmatrix}3&6\\6&14\end{smallmatrix}\bigr)$. \checkmark
+  \item $\bX^\top\by = (6,\;13)^\top$. \checkmark
+  \item $\det(\bX^\top\bX) = 42-36 = 6$. \checkmark
+  \item $(\bX^\top\bX)^{-1} = \bigl(\begin{smallmatrix}7/3&-1\\-1&1/2\end{smallmatrix}\bigr)$. \checkmark
+  \item $\bhat = (1,\;1/2)^\top$: intermediate products $14-13=1$ and $-6+13/2 = 1/2$. \checkmark
+  \item $\yhat = (3/2,\;2,\;5/2)^\top$. \checkmark
+  \item $\be = (-1/2,\;1,\;-1/2)^\top$. \checkmark
+  \item $\bX^\top\be = (0,\;0)^\top$: first component $-1/2+1-1/2=0$, second $-1/2+2-3/2=0$. \checkmark
+  \item $\bX(\bX^\top\bX)^{-1} = \bigl(\begin{smallmatrix}4/3&-1/2\\1/3&0\\-2/3&1/2\end{smallmatrix}\bigr)$. \checkmark
+  \item $\bH = \frac{1}{6}\bigl(\begin{smallmatrix}5&2&-1\\2&2&2\\-1&2&5\end{smallmatrix}\bigr)$. \checkmark
+  \item $\tr(\bH) = 12/6 = 2$. \checkmark
+  \item $\bH^2$: the $6\times 6$ entry-by-entry product
+        $\frac{1}{36}\bigl(\begin{smallmatrix}30&12&-6\\12&12&12\\-6&12&30\end{smallmatrix}\bigr)
+        = \frac{1}{6}\bigl(\begin{smallmatrix}5&2&-1\\2&2&2\\-1&2&5\end{smallmatrix}\bigr) = \bH$. \checkmark
+\end{itemize}
+
+
+% ---------------------------------------------------------------------
+% EXAMPLE 2: "Pythagoras Checks Out"
+% Verdict: ALL CORRECT
+% ---------------------------------------------------------------------
+
+\subsection*{Example 2 (Pythagoras Checks Out)}
+
+\textbf{Verdict: ALL CORRECT.}
+
+\begin{itemize}[nosep]
+  \item $\bar{y} = 6/3 = 2$. \checkmark
+  \item SST $= 1+1+0 = 2$. \checkmark
+  \item SSR $= 1/4+0+1/4 = 1/2$. \checkmark
+  \item SSE $= 1/4+1+1/4 = 3/2$. \checkmark
+  \item SSR $+$ SSE $= 1/2+3/2 = 2 =$ SST. \checkmark
+  \item $R^2 = (1/2)/2 = 1/4 = 0.25$. \checkmark
+  \item $\cos\theta = 1/2$, $\theta = 60°$. \checkmark
+\end{itemize}
+
+
+% ---------------------------------------------------------------------
+% EXAMPLE 3: "FWL by Hand"
+% Verdict: FINAL ANSWER CORRECT, but intermediate Step B3 has an ERROR
+% ---------------------------------------------------------------------
+
+\subsection*{Example 3 (FWL by Hand)}
+
+\textbf{Verdict: Final answer $\hat\beta_2^{\text{FWL}} = 3$ is correct,
+but Step~B3 contains an arithmetic error that propagates through two
+subsequent displayed equations.}
+
+\medskip
+\noindent\textbf{Part A (full regression): correct.}
+\begin{itemize}[nosep]
+  \item $\bX^\top\bX = \bigl(\begin{smallmatrix}4&2&2\\2&2&1\\2&1&2\end{smallmatrix}\bigr)$. \checkmark
+  \item $\bX^\top\by = (12,\;8,\;9)^\top$. \checkmark
+  \item Row reduction verified: $\hat\beta_2=3$, $\hat\beta_1=2$, $\hat\beta_0=1/2$. \checkmark
+  \item $\yhat = (5/2,\;7/2,\;11/2,\;1/2)^\top$, $\be = (-1/2,\;-1/2,\;1/2,\;1/2)^\top$. \checkmark
+  \item $\bX^\top\be = (0,0,0)^\top$. \checkmark
+\end{itemize}
+
+\medskip
+\noindent\textbf{Part B (FWL two-step): Steps B1--B2 correct, Step B3 has error.}
+\begin{itemize}[nosep]
+  \item Step B1: $(\bX_1^\top\bX_1)^{-1} = \bigl(\begin{smallmatrix}1/2&-1/2\\-1/2&1\end{smallmatrix}\bigr)$. \checkmark
+  \item Step B2: $\tilde{\bm{x}}_2 = (-1/2,\;1/2,\;1/2,\;-1/2)^\top$. \checkmark
+  \item[\bfseries !] \textbf{Step B3 --- ERROR:}
+        The document computes
+        \[
+          (\bX_1^\top\bX_1)^{-1}\bX_1^\top\by
+          = \begin{pmatrix}1/2&-1/2\\-1/2&1\end{pmatrix}
+            \begin{pmatrix}12\\8\end{pmatrix}
+          = \begin{pmatrix}2\\4\end{pmatrix}.
+        \]
+        The correct computation is:
+        \[
+          \begin{pmatrix}(1/2)(12)+(-1/2)(8)\\(-1/2)(12)+(1)(8)\end{pmatrix}
+          = \begin{pmatrix}6-4\\-6+8\end{pmatrix}
+          = \begin{pmatrix}2\\2\end{pmatrix}.
+        \]
+        The document writes $(2,\;4)^\top$ but the correct answer is
+        $\boxed{(2,\;2)^\top}$.
+
+  \item[\bfseries !] \textbf{Cascading errors in Step B3:}
+        \begin{itemize}[nosep]
+          \item The projection $\bX_1(2,\;4)^\top$ is given as $(6,\;2,\;6,\;2)^\top$.
+                With the correct coefficient $(2,\;2)^\top$, the projection is
+                $\bX_1(2,\;2)^\top = (2+2,\;2+0,\;2+2,\;2+0)^\top
+                = \boxed{(4,\;2,\;4,\;2)^\top}$.
+          \item The residualised response is given as
+                $\tilde{\by} = (-4,\;1,\;0,\;-1)^\top$.
+                The correct value is
+                $\tilde{\by} = (2-4,\;3-2,\;6-4,\;1-2)^\top
+                = \boxed{(-2,\;1,\;2,\;-1)^\top}$.
+        \end{itemize}
+
+  \item Step B4: The final regression $\hat\beta_2 = \tilde{\bm{x}}_2^\top\tilde{\by}\,/\,
+        \tilde{\bm{x}}_2^\top\tilde{\bm{x}}_2$ gives $3/1 = 3$ with \emph{either}
+        version of $\tilde{\by}$, because the error happens to cancel in the
+        inner product.  (With the wrong $\tilde{\by}$:
+        $(-1/2)(-4)+(1/2)(1)+(1/2)(0)+(-1/2)(-1) = 2+1/2+0+1/2 = 3$.
+        With the correct $\tilde{\by}$:
+        $(-1/2)(-2)+(1/2)(1)+(1/2)(2)+(-1/2)(-1) = 1+1/2+1+1/2 = 3$.)
+        So the \emph{final answer} $\hat\beta_2 = 3$ is correct despite the
+        intermediate error.
+\end{itemize}
+
+\medskip
+\noindent\textbf{Severity: ERROR.}
+A student following along would obtain $\tilde{\by} = (-2,1,2,-1)^\top$
+and be confused by the disagreement with the printed $(- 4,1,0,-1)^\top$.
+The corrected LaTeX is provided in Part~D below.
+
+
+% ---------------------------------------------------------------------
+% EXAMPLE 4: "Multicollinearity in Action"
+% Verdict: Case A correct; Case B has an approximate-number error
+% ---------------------------------------------------------------------
+
+\subsection*{Example 4 (Multicollinearity in Action)}
+
+\textbf{Verdict: Case A entirely correct.  Case B has an error in the
+approximate coefficient values after perturbation.}
+
+\medskip
+\noindent\textbf{Case A: correct.}
+\begin{itemize}[nosep]
+  \item Sample correlation $r_{12} = 0$: verified from the dot product of centered predictors. \checkmark
+  \item Perturbed $\bX^\top\by_{\text{new}} = (13,\;8,\;9)^\top$. \checkmark
+  \item Row reduction gives $\hat\beta_1^{\text{new}} = 3/2$, $\hat\beta_2^{\text{new}} = 5/2$,
+        $\hat\beta_0^{\text{new}} = 5/4$. \checkmark
+  \item $|\Delta\hat\beta_1| = 1/2$, $|\Delta\hat\beta_2| = 1/2$. \checkmark
+\end{itemize}
+
+\medskip
+\noindent\textbf{Case B: error in approximate values.}
+\begin{itemize}[nosep]
+  \item $\bX^\top\bX$ with $x_{2,4}=3.01$: verified entry by entry. \checkmark
+  \item Centered cross-product matrix $C$: $C_{11}=5$, $C_{12}=5.015$, $C_{22}=5.030075$. \checkmark
+  \item $\det(C) = 0.00015$: verified. \checkmark
+        (The document's initial ``$-0.0001$'' is explicitly self-corrected in the text; this is acceptable.)
+  \item Eigenvalues $\approx 10.03$ and $\approx 0.000015$: verified. \checkmark
+  \item Condition number $\approx 670{,}000$: verified ($670{,}681$). \checkmark
+  \item[\bfseries !] \textbf{ERROR in perturbed solution:}
+        The document claims that changing $y_4$ from $9$ to $10$ yields
+        $\bhat \approx (3,\;-65,\;68)$ with a swing of $\pm 67$.
+        The actual solution (verified by direct computation of
+        $(\bX^\top\bX)^{-1}\bX^\top\by$) is
+        $\bhat \approx \boxed{(3,\;-98,\;100)}$
+        with a swing of $\pm 100$.
+  \item[\bfseries !] \textbf{Cascading error in the summary table:}
+        The table entry ``$\Delta\hat\beta$ per unit $\Delta y$: $\approx 67$''
+        should be $\boxed{\approx 100}$.
+\end{itemize}
+
+\medskip
+\noindent\textbf{Severity: ERROR.}
+The qualitative message (``the swing is huge'') is correct, but the
+specific numbers are wrong by roughly a factor of 1.5.  A student who
+solves the system will get $\approx\pm 100$ and be confused.
+Corrected LaTeX is provided in Part~D.
+
+
+% ---------------------------------------------------------------------
+% EXAMPLE 5: "Leverage and Influence"
+% Verdict: ALL CORRECT (values use legitimate rounding)
+% ---------------------------------------------------------------------
+
+\subsection*{Example 5 (Leverage and Influence)}
+
+\textbf{Verdict: ALL CORRECT.}
+
+\begin{itemize}[nosep]
+  \item $\bX^\top\bX = \bigl(\begin{smallmatrix}5&20\\20&130\end{smallmatrix}\bigr)$, $\det = 250$. \checkmark
+  \item $(\bX^\top\bX)^{-1} = \frac{1}{250}\bigl(\begin{smallmatrix}130&-20\\-20&5\end{smallmatrix}\bigr)$. \checkmark
+  \item Leverage formula $h_{ii} = (26-8x_i+x_i^2)/50$: verified for all five observations. \checkmark
+  \item $\sum h_{ii} = 100/50 = 2 = p$. \checkmark
+  \item $\bhat = (36/25,\;47/50)^\top = (1.44,\;0.94)^\top$: exact fractions. \checkmark
+  \item Fitted values and residuals: all correct to the displayed precision (which is exact). \checkmark
+  \item SSE $= 131/50 = 2.62$, $\hat\sigma^2 = 131/150 \approx 0.873$. \checkmark
+  \item Influence experiment ($y_5$ shift): $\Delta\bhat = (-1.4,\;0.6)^\top$. \checkmark
+  \item Influence experiment ($y_3$ shift): $\Delta\bhat = (1.4,\;-0.1)^\top$. \checkmark
+  \item Ratio $|\Delta\hat\beta_1| = 0.6/0.1 = 6$. \checkmark
+  \item Cook's distances: verified for all five observations, matching the
+        tabulated values to two decimal places. \checkmark
+\end{itemize}
+
+\medskip
+\noindent\textbf{Minor note.}
+The table states $p\hat\sigma^2 = 2\times 0.873 = 1.746$.
+The exact value is $2 \times 131/150 = 262/150 \approx 1.7467$.
+The document rounds $\hat\sigma^2$ to $0.873$ and then multiplies;
+$2\times 0.873 = 1.746$ is consistent with that rounding.
+No correction needed.
+
+
+% ---------------------------------------------------------------------
+% EXAMPLE 6: "Ridge Shrinkage Direction by Direction"
+% Verdict: ALL CORRECT
+% ---------------------------------------------------------------------
+
+\subsection*{Example 6 (Ridge Shrinkage)}
+
+\textbf{Verdict: ALL CORRECT.}
+
+\begin{itemize}[nosep]
+  \item Eigendecomposition $\bX^\top\bX = \bQ\bD\bQ^\top = \bigl(\begin{smallmatrix}5&4\\4&5\end{smallmatrix}\bigr)$:
+        verified. \checkmark
+  \item $\bX^\top\by = (19,\;17)^\top$ from $\bX^\top\bX\,\bhat_{\text{OLS}}$. \checkmark
+  \item Eigenbasis decomposition: $\alpha_1 = 2$, $\alpha_2 = 1$. \checkmark
+  \item Shrinkage formula $\alpha_k^{\text{R}} = \frac{\lambda_k}{\lambda_k+\lambda}\alpha_k^{\text{OLS}}$:
+        verified for all four $\lambda$ values. \checkmark
+  \item Coefficient reconstruction: $\hat\beta_1 = \alpha_1+\alpha_2$,
+        $\hat\beta_2 = \alpha_1-\alpha_2$: verified. \checkmark
+  \item Table entries for $\lambda=0,1$: exact. \checkmark
+  \item Table entries for $\lambda=10$: $\hat\beta_1 = 217/209 \approx 1.04$,
+        $\hat\beta_2 = 179/209 \approx 0.86$. Rounding is legitimate. \checkmark
+  \item Table entries for $\lambda=100$: $\hat\beta_1 \approx 0.175$,
+        $\hat\beta_2 \approx 0.155$. The document rounds to $0.18$ and $0.16$.
+        Slightly generous rounding but acceptable for a table. \checkmark
+  \item Direct verification for $\lambda=1$:
+        $(\bX^\top\bX+\bI)^{-1} = \frac{1}{20}\bigl(\begin{smallmatrix}6&-4\\-4&6\end{smallmatrix}\bigr)$,
+        $\bhat_{\text{Ridge}} = (23/10,\;13/10)^\top$. \checkmark
+  \item Norm column: $\|\bhat\| \approx 3.16, 2.64, 1.35$ for $\lambda = 0,1,10$. \checkmark
+  \item Norm for $\lambda=100$: exact value is $\approx 0.234$; document rounds to $0.24$.
+        Acceptable. \checkmark
+\end{itemize}
+
+
+% =====================================================================
+%                     PART B: PROOF VERIFICATION
+% =====================================================================
+
+\section*{Part B: Logical Audit of Proofs}
+
+
+% ----- Projection Theorem -----
+\subsection*{Proof of the Projection Theorem}
+
+\textbf{Verdict: CORRECT and COMPLETE.}
+
+The proof has three steps (existence, uniqueness, orthogonality) plus a
+converse.  All are logically sound:
+
+\begin{itemize}[nosep]
+  \item \textbf{Step 1 (Existence):}  Uses compactness of a closed bounded
+        subset of a finite-dimensional subspace plus the extreme value
+        theorem.  The argument that the search can be confined to a bounded
+        set (by choosing any reference point $\bm{s}_0$) is correct. \checkmark
+  \item \textbf{Step 2 (Uniqueness):}  Uses the parallelogram law correctly.
+        The key inference is: $\|2\by - \yhat - \yhat'\|^2 \ge 4d^2$ because
+        $\tfrac{1}{2}(\yhat+\yhat') \in S$, so the norm of the average
+        residual is at least $d$.  Squaring and multiplying by 4 gives the
+        bound. Then $\|\yhat'-\yhat\|^2 \le 0$ forces equality. \checkmark
+  \item \textbf{Step 3 (Orthogonality):}  Standard variational argument.
+        $f(t)$ is a quadratic in $t$ with minimum at $t=0$; setting $f'(0)=0$
+        gives $\langle \by-\yhat, \bm{v}\rangle = 0$. \checkmark
+  \item \textbf{Converse:}  Uses Pythagoras (cross term vanishes by
+        orthogonality) to show $\|\by-\bm{s}\|^2 \ge \|\by-\yhat\|^2$.
+        Correct and properly closes the biconditional. \checkmark
+\end{itemize}
+
+\textbf{No gaps, no circular arguments.}
+
+
+% ----- FWL Proof -----
+\subsection*{Proof of FWL (Block Elimination)}
+
+\textbf{Verdict: CORRECT and COMPLETE.}
+
+This is a significant improvement over the original proof sketch in
+\texttt{lecture\_notes.tex} (which simply said ``solve the first block
+and substitute'').  The new proof:
+
+\begin{itemize}[nosep]
+  \item Writes the block normal equations explicitly. \checkmark
+  \item Solves the first block for $\bhat_1$ (valid since $\bX_1$ has
+        full column rank). \checkmark
+  \item Substitutes into the second block and simplifies, using the
+        identity $\bX_1(\bX_1^\top\bX_1)^{-1}\bX_1^\top = \bI - \bM_1$.
+        The underbrace labels are correct. \checkmark
+  \item Collects terms and uses the symmetric-idempotent properties of
+        $\bM_1$ to factor $\bX_2^\top\bM_1\bX_2 = (\bM_1\bX_2)^\top(\bM_1\bX_2)$
+        and $\bX_2^\top\bM_1\by = (\bM_1\bX_2)^\top(\bM_1\by)$. \checkmark
+  \item States the rank condition (``provided $\bM_1\bX_2$ has full column
+        rank'') explicitly. \checkmark
+\end{itemize}
+
+\textbf{Minor note:}
+The step ``$\bX_2^\top\bX_2 - \bX_2^\top(\bI-\bM_1)\bX_2 = \bX_2^\top\bM_1\bX_2$''
+is stated in a parenthetical remark (line~162).  This is algebraically
+immediate ($\bX_2^\top\bX_2 - \bX_2^\top\bX_2 + \bX_2^\top\bM_1\bX_2 =
+\bX_2^\top\bM_1\bX_2$), so the omission of a detailed expansion is acceptable.
+
+\textbf{No gaps, no circular arguments.}
+
+
+% ----- Gauss-Markov Proof -----
+\subsection*{Proof of Gauss--Markov}
+
+\textbf{Verdict: CORRECT and COMPLETE.}
+
+\begin{itemize}[nosep]
+  \item \textbf{Step 1:}  Decomposes $\bm{C} = (\bX^\top\bX)^{-1}\bX^\top + \bD$.  Standard. \checkmark
+  \item \textbf{Step 2:}  Derives $\bD\bX = \bm{0}$ from unbiasedness.
+        The chain $E[\btilde] = \bm{C}\bX\bm{\beta} = (\bI_p + \bD\bX)\bm{\beta}$
+        is correct.  Requiring this to equal $\bm{\beta}$ for all $\bm{\beta}$
+        forces $\bD\bX = \bm{0}$. \checkmark
+  \item \textbf{Step 3:}  Expands $\bm{C}\bm{C}^\top$ and uses $\bD\bX = \bm{0}$
+        to kill the cross terms.  The key computation:
+        $(\bX^\top\bX)^{-1}\bX^\top\bD^\top = (\bD\bX(\bX^\top\bX)^{-1})^\top
+        = \bm{0}^\top = \bm{0}$. \checkmark
+
+        The remaining term $(\bX^\top\bX)^{-1}\bX^\top\bX(\bX^\top\bX)^{-1}
+        = (\bX^\top\bX)^{-1}$ is correct. \checkmark
+  \item \textbf{Step 4:}  Concludes $\text{Var}(\btilde) - \text{Var}(\bhat)
+        = \sigma^2\bD\bD^\top \succeq \bm{0}$ with equality iff $\bD = \bm{0}$.
+        Correct. \checkmark
+\end{itemize}
+
+The geometric remark (``the rows of $\bD$ live in $\Col(\bX)^\perp$'')
+is a correct restatement of $\bD\bX = \bm{0}$ and adds genuine intuition.
+
+\textbf{No gaps, no circular arguments.}
+
+\medskip
+\noindent\textbf{Potential label conflict:}
+The original document defines \verb|\label{thm:gm}| for the Gauss--Markov
+theorem. The new proof uses \verb|\label{thm:gm-full}|. If the intention is
+to \emph{replace} the original theorem statement, the label should remain
+\verb|thm:gm| to avoid breaking existing references. If both are to
+coexist, the labels are fine. See Part~C for details.
+
+
+% ----- Characterisation Theorem -----
+\subsection*{Proof of the Characterisation Theorem (Symmetric + Idempotent $\Leftrightarrow$ Orthogonal Projection)}
+
+\textbf{Verdict: CORRECT and COMPLETE.}
+
+\begin{itemize}[nosep]
+  \item \textbf{(a) $\Rightarrow$ (b):}  Idempotency follows from
+        ``projecting something already in $W$ gives itself.''  Symmetry
+        follows from $\langle P\bm{u}, \bm{v}\rangle = \langle P\bm{u},
+        P\bm{v}\rangle = \langle \bm{u}, P\bm{v}\rangle$, with each step
+        justified by orthogonal decomposition. \checkmark
+  \item \textbf{(b) $\Rightarrow$ (a):}  Part~(i) ($P\bm{v} \in W$) is
+        immediate from the definition of $\Col(P)$.  Part~(ii)
+        ($\bm{v} - P\bm{v} \perp W$) uses symmetry ($P^\top = P$) and
+        idempotency ($P^2 = P$) in the computation
+        $\bm{v}^\top P\bm{z} - \bm{v}^\top P^2\bm{z} = 0$. \checkmark
+\end{itemize}
+
+\textbf{No gaps, no circular arguments.}
+
+
+% =====================================================================
+%                     PART C: CONSISTENCY CHECK
+% =====================================================================
+
+\section*{Part C: Consistency with \texttt{lecture\_notes.tex}}
+
+
+\subsection*{Macro usage}
+
+All macros used in \texttt{round2\_math.tex} and \texttt{round2\_examples.tex}
+are defined in the preamble of \texttt{lecture\_notes.tex}:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.1}
+\begin{tabular}{ll}
+\toprule
+Macro & Defined? \\
+\midrule
+\verb|\bX, \by, \bH, \bM, \be, \yhat, \bhat, \btilde| & Yes \\
+\verb|\bI, \bQ, \bD| & Yes \\
+\verb|\Col, \ip, \norm, \R, \tr, \rank, \diag, \argmin| & Yes \\
+\verb|\bm{...}| (from \texttt{bm} package) & Yes \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent\textbf{No undefined macros found.}
+
+\medskip
+\noindent\textbf{Potential concern:} The Gauss--Markov proof uses
+\verb|\bD| for the ``excess matrix'' $\bm{C} - (\bX^\top\bX)^{-1}\bX^\top$.
+The macro \verb|\bD| is already defined in the main document as
+$\bm{D}$ and is used in the Ridge regression section for the diagonal
+eigenvalue matrix.  Since the two uses occur in different sections and
+the meaning is clear from context, this is acceptable.  However, if
+there is any possibility of the Gauss--Markov proof and the Ridge
+section appearing on the same page, consider using a different letter
+(e.g., $\bm{A}$) for the excess matrix.
+
+
+\subsection*{Label conflicts}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.1}
+\begin{tabular}{lll}
+\toprule
+New label & Existing label & Conflict? \\
+\midrule
+\verb|eq:fwl-blocks| & --- & No conflict \\
+\verb|eq:fwl-beta1| & --- & No conflict \\
+\verb|thm:gm-full| & \verb|thm:gm| & Potential issue (see below) \\
+\verb|eq:gm-constraint| & --- & No conflict \\
+\verb|thm:proj-char| & --- & No conflict \\
+\verb|rem:hii-intercept| & --- & No conflict \\
+\verb|rem:intercept-decomp| & --- & No conflict \\
+\verb|sec:adj-r2| & --- & No conflict \\
+\verb|sec:df| & --- & No conflict \\
+\verb|ex:first-regression| & --- & No conflict \\
+\verb|ex:pythagoras| & --- & No conflict \\
+\verb|ex:fwl| & --- & No conflict \\
+\verb|ex:multicollinearity| & --- & No conflict \\
+\verb|ex:leverage| & --- & No conflict \\
+\verb|ex:ridge| & --- & No conflict \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent\textbf{Issue:} The Gauss--Markov theorem is currently labeled
+\verb|thm:gm| in the original document.  The round2 version introduces a
+new label \verb|thm:gm-full|.  If the intention is to \emph{replace} the
+existing theorem and proof, the new label should be \verb|thm:gm| to
+preserve any references.  If both are to coexist (unlikely), the new
+label is fine.  \textbf{Recommendation:} Change \verb|thm:gm-full| to
+\verb|thm:gm|.
+
+
+\subsection*{Cross-references}
+
+The following cross-references in the new material point to labels that
+exist in \texttt{lecture\_notes.tex}:
+
+\begin{itemize}[nosep]
+  \item \verb|Proposition~\ref{prop:hat}| $\to$ \verb|\label{prop:hat}| (line~244). \checkmark
+  \item \verb|Proposition~\ref{prop:r2mono}| $\to$ \verb|\label{prop:r2mono}| (line~434). \checkmark
+  \item \verb|Section~\ref{sec:ftest}| $\to$ \verb|\label{sec:ftest}| (line~882). \checkmark
+  \item \verb|Example~\ref{ex:first-regression}| $\to$ self-reference within round2. \checkmark
+  \item \verb|Example~\ref{ex:fwl}| $\to$ self-reference within round2. \checkmark
+\end{itemize}
+
+\noindent\textbf{All cross-references resolve correctly.}
+
+
+\subsection*{Theorem/example numbering}
+
+The original document uses \verb|\newtheorem{example}[theorem]{Example}|,
+which means examples share the theorem counter.  The new examples will be
+numbered according to the section in which they are inserted.  Since the
+insertion directives specify locations (e.g., ``after Section~2.3''),
+the numbering will be assigned automatically by \LaTeX{} and will not
+conflict.  \textbf{No issue.}
+
+
+\subsection*{Package dependencies}
+
+The new material uses \verb|\boxed{}| (from \texttt{amsmath}, already loaded),
+\verb|\checkmark| (from \texttt{amssymb}, already loaded),
+\verb|[nosep,label=(\alph*)]| and \verb|[nosep,label=(\roman*)]| (from
+\texttt{enumitem}, already loaded), and \verb|\tcolorbox| (already loaded).
+\textbf{No new packages needed.}
+
+
+% =====================================================================
+%                     PART D: CORRECTED LATEX
+% =====================================================================
+
+\section*{Part D: Corrected \LaTeX}
+
+
+% =====================================================================
+% CORRECTION 1: Example 3, Step B3
+% =====================================================================
+
+\subsection*{Correction 1: Example 3 (FWL), Step B3}
+
+Replace the current Step B3 block (from ``\emph{Step B3: Residualise
+$\by$ on $\bX_1$.}'' through the displayed residual $\tilde{\by}$)
+with the following:
+
+\begin{verbatim}
+\emph{Step B3: Residualise $\by$ on $\bX_1$.}
+\[
+\bX_1^\top\by = \begin{pmatrix}12\\8\end{pmatrix},\quad
+(\bX_1^\top\bX_1)^{-1}\bX_1^\top\by
+= \begin{pmatrix}1/2&-1/2\\-1/2&1\end{pmatrix}
+  \begin{pmatrix}12\\8\end{pmatrix}
+= \begin{pmatrix}2\\2\end{pmatrix}.
+\]
+Projection: $\bX_1\bigl(\begin{smallmatrix}2\\2\end{smallmatrix}\bigr)
+= (2+2,\;2+0,\;2+2,\;2+0)^\top = (4,\;2,\;4,\;2)^\top$.
+
+Residual:
+\[
+\tilde{\by} = (2,3,6,1)^\top - (4,2,4,2)^\top
+= (-2,\;1,\;2,\;-1)^\top.
+\]
+\end{verbatim}
+
+And update Step B4's numerator calculation:
+
+\begin{verbatim}
+Numerator:
+\[
+\tilde{\bm{x}}_2^\top\tilde{\by}
+= \bigl(-\tfrac{1}{2}\bigr)(-2) + \bigl(\tfrac{1}{2}\bigr)(1)
+  + \bigl(\tfrac{1}{2}\bigr)(2) + \bigl(-\tfrac{1}{2}\bigr)(-1)
+= 1 + \tfrac{1}{2} + 1 + \tfrac{1}{2} = 3.
+\]
+\end{verbatim}
+
+
+% =====================================================================
+% CORRECTION 2: Example 4, Case B perturbed solution
+% =====================================================================
+
+\subsection*{Correction 2: Example 4 (Multicollinearity), Case B perturbed values}
+
+Replace the paragraph beginning ``But change $y_4$ to $10$'' with:
+
+\begin{verbatim}
+But change $y_4$ to $10$ (a shift of $+1$) and the solution becomes
+approximately $\bhat \approx (3,\; -98,\; 100)$ --- the individual
+coefficients swing by $\pm 100$ even though the \emph{prediction}
+$\yhat$ barely changes.
+\end{verbatim}
+
+And in the summary table, replace the row:
+
+\begin{verbatim}
+$\Delta\hat\beta$ per unit $\Delta y$ & $\le 1/2$ & $\approx 67$ \\
+\end{verbatim}
+
+with:
+
+\begin{verbatim}
+$\Delta\hat\beta$ per unit $\Delta y$ & $\le 1/2$ & $\approx 100$ \\
+\end{verbatim}
+
+
+% =====================================================================
+% CORRECTION 3 (OPTIONAL): Gauss--Markov label
+% =====================================================================
+
+\subsection*{Correction 3 (Recommended): Gauss--Markov label}
+
+If the new Gauss--Markov theorem and proof are intended to replace the
+existing ones, change:
+
+\begin{verbatim}
+\begin{theorem}[Gauss--Markov]\label{thm:gm-full}
+\end{verbatim}
+
+to:
+
+\begin{verbatim}
+\begin{theorem}[Gauss--Markov]\label{thm:gm}
+\end{verbatim}
+
+
+% =====================================================================
+%                     SUMMARY OF FINDINGS
+% =====================================================================
+
+\section*{Summary}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{llcc}
+\toprule
+Item & Verdict & Errors & Severity \\
+\midrule
+Example 1 & All correct & 0 & --- \\
+Example 2 & All correct & 0 & --- \\
+Example 3 & Final answer correct, intermediates wrong & 1 & ERROR \\
+Example 4 & Approximate values wrong by factor $\sim 1.5$ & 1 & ERROR \\
+Example 5 & All correct & 0 & --- \\
+Example 6 & All correct & 0 & --- \\
+\midrule
+Projection Theorem proof & Complete, no gaps & 0 & --- \\
+FWL proof & Complete, no gaps & 0 & --- \\
+Gauss--Markov proof & Complete, no gaps & 0 & --- \\
+Characterisation proof & Complete, no gaps & 0 & --- \\
+\midrule
+Macro consistency & No undefined macros & 0 & --- \\
+Label conflicts & \verb|thm:gm-full| vs \verb|thm:gm| & 1 & NOTE \\
+Cross-references & All resolve & 0 & --- \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\medskip
+\noindent\textbf{Bottom line:} Two numerical errors need correction
+(Example~3 Step~B3 and Example~4 Case~B approximate values).  All four
+proofs are logically complete and free of gaps or circular reasoning.
+The new material is fully consistent with the macro and labeling
+conventions of the original document, subject to the minor label
+recommendation above.
+
+\noindent Corrected \LaTeX{} for both errors is provided in Part~D.
