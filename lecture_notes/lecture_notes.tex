@@ -304,7 +304,25 @@ Since $\yhat\perp\be$ and $\by = \yhat + \be$, the Pythagorean theorem gives
 \end{equation}
 Working with demeaned vectors $\tilde{\by}=\by-\bar{y}\bm{1}$
 (which is the projection of $\by$ onto the orthogonal complement of
-the intercept), we obtain
+the intercept), we obtain the fundamental variance decomposition.
+Before stating it, let us define the three sums of squares.
+
+\begin{definition}[Sums of Squares]\label{def:sums-of-squares}
+\leavevmode
+\begin{itemize}[nosep]
+  \item \textbf{SST} (Total Sum of Squares) $= \sum_{i=1}^n (y_i - \bar{y})^2 = \norm{\tilde{\by}}^2$.\\
+    This measures the \emph{total variability} in the response.
+    It answers: ``How spread out are the $y_i$ values around their mean?''
+  \item \textbf{SSR} (Regression Sum of Squares, also called the ``explained'' sum of squares) $= \sum_{i=1}^n (\hat{y}_i - \bar{y})^2 = \norm{\tilde{\yhat}}^2$.\\
+    This measures the variability \emph{explained by the model}.
+    It answers: ``How much of the spread in $\by$ is captured by the fitted values?''
+  \item \textbf{SSE} (Error Sum of Squares, also called the ``residual'' sum of squares) $= \sum_{i=1}^n (y_i - \hat{y}_i)^2 = \norm{\be}^2$.\\
+    This measures the variability \emph{left unexplained} by the model.
+    It answers: ``How far are the actual values from the predictions?''
+\end{itemize}
+\end{definition}
+
+\noindent With these definitions, the Pythagorean theorem gives us:
 \[
   \boxed{
   \underbrace{\norm{\tilde{\by}}^2}_{\text{SST}}
@@ -314,6 +332,7 @@ the intercept), we obtain
   \underbrace{\norm{\be}^2}_{\text{SSE}}.
   }
 \]
+In words: the total variability in the data equals the variability explained by the regression plus the variability left over in the residuals.
 The variance decomposition \emph{is} the Pythagorean theorem applied to
 the right triangle $(\tilde{\by},\;\tilde{\yhat},\;\be)$ in $\R^n$.
 
@@ -340,20 +359,50 @@ $\text{SST}=\text{SSR}+\text{SSE}$.}
 
 \subsection{$R^2$ is the cosine of an angle}\label{sec:r2}
 
-The angle $\theta$ between $\tilde{\by}$ and $\tilde{\yhat}$ satisfies
+The coefficient of determination $R^2$ is usually introduced via the formula
+$R^2 = 1 - \text{SSE}/\text{SST}$, or equivalently
+$R^2 = \text{SSR}/\text{SST}$.
+Let us derive this from the geometry of the regression right triangle.
+
+Look at the right triangle in the figure above.
+The \emph{hypotenuse} is the demeaned data vector $\tilde{\by}$ (with length $\sqrt{\text{SST}}$),
+the \emph{adjacent side} is the demeaned fitted vector $\tilde{\yhat}$ (with length $\sqrt{\text{SSR}}$),
+and the \emph{opposite side} is the residual $\be$ (with length $\sqrt{\text{SSE}}$).
+The angle $\theta$ sits at the origin, between the hypotenuse and the adjacent side.
+
+From basic trigonometry, the cosine of an angle in a right triangle is
 \[
-  \cos\theta = \frac{\norm{\tilde{\yhat}}}{\norm{\tilde{\by}}},
+  \cos\theta = \frac{\text{adjacent}}{\text{hypotenuse}}
+  = \frac{\norm{\tilde{\yhat}}}{\norm{\tilde{\by}}}
+  = \frac{\sqrt{\text{SSR}}}{\sqrt{\text{SST}}}.
 \]
-so
+Squaring both sides:
+\[
+  \cos^2\theta
+  = \frac{\norm{\tilde{\yhat}}^2}{\norm{\tilde{\by}}^2}
+  = \frac{\text{SSR}}{\text{SST}}.
+\]
+But $\text{SSR}/\text{SST}$ is precisely the definition of $R^2$, so we arrive at
 \begin{equation}\label{eq:r2}
-  \boxed{R^2 = \cos^2\theta = \frac{\text{SSR}}{\text{SST}}.}
+  \boxed{R^2 = \cos^2\theta = \frac{\text{SSR}}{\text{SST}}
+  = 1 - \frac{\text{SSE}}{\text{SST}}.}
 \end{equation}
+The last equality follows directly from $\text{SST} = \text{SSR} + \text{SSE}$.
 
 \begin{keyinsight}
 $R^2$ is literally the squared cosine of the angle between the data vector
 and its projection.
-A small $\theta$ (data close to its shadow) gives $R^2$ near 1.
-A large $\theta$ (data far from its shadow) gives $R^2$ near 0.
+\begin{itemize}[nosep]
+  \item When $\theta\approx 0$, the data vector nearly lies on the column space.
+    The shadow almost coincides with the object, meaning the model explains
+    nearly all the variability: $R^2\approx 1$.
+  \item When $\theta\approx 90°$, the data vector is nearly perpendicular to the
+    column space.  The shadow is tiny---the model explains almost nothing:
+    $R^2\approx 0$.
+  \item $R^2 = 0.75$ means $\cos^2\theta = 0.75$, so $\theta\approx 30°$.
+    Three-quarters of the data's variability is captured by the
+    projection; one quarter is residual.
+\end{itemize}
 \end{keyinsight}
 
 
@@ -408,9 +457,26 @@ room but means nothing for the next room.
 
 \subsection{What ``controlling for'' means geometrically}
 
-In a multiple regression $\by = \bX_1\bm{\beta}_1 + \bX_2\bm{\beta}_2 + \be$,
+\noindent\textbf{What does ``conditioning on'' or ``controlling for'' a variable mean?}
+
+In everyday regression language, you will hear phrases like
+``the effect of education on income, \emph{controlling for} age'' or
+``the coefficient of $x_2$ \emph{conditional on} $x_1$.''
+For an undergraduate, this can sound mysterious.
+Here is the plain-English idea:
+
+Suppose you want to know whether education affects income.
+But older people tend to have both more education and higher income simply because they have been working longer.
+If you just regress income on education, you cannot tell whether the apparent effect comes from education itself or from age lurking in the background.
+\emph{Controlling for age} means: compare people \emph{of the same age} and then ask whether more education is still associated with higher income.
+In other words, you strip out the age-related variation from both income and education, and then look at what remains.
+
+In a regression with multiple predictors, this is \emph{exactly} what the
+coefficient of a predictor measures. When we write
+$\by = \bX_1\bm{\beta}_1 + \bX_2\bm{\beta}_2 + \be$,
 the coefficient $\bhat_2$ answers: \emph{what is the effect of $\bX_2$
-after removing the influence of $\bX_1$?}
+after removing (``partialling out'') the influence of $\bX_1$?}
+The Frisch--Waugh--Lovell theorem below makes this operation precise.
 
 \begin{theorem}[Frisch--Waugh--Lovell]\label{thm:fwl}
 Partition the design matrix as $\bX = [\bX_1\;\;\bX_2]$
@@ -450,21 +516,65 @@ The multiple regression coefficient is the simple regression coefficient
 in the residualised subspace.
 \end{keyinsight}
 
+\medskip
+\noindent\textbf{The geometric analogy: two-step projection.}
+Picture a three-dimensional room. The data vector $\by$ is a point floating in the room. The full column space $\Col(\bX_1, \bX_2)$ is a plane (the ``floor''). The subspace $\Col(\bX_1)$ is a line within that floor.
+
+The FWL theorem says you can find the regression coefficient $\bhat_2$ via two sequential projections instead of one joint projection:
+\begin{enumerate}[nosep]
+  \item \textbf{Step 1: Remove $\bX_1$'s influence.}
+    Project both $\by$ and $\bX_2$ onto the space \emph{perpendicular} to $\Col(\bX_1)$.
+    This is like ``looking at the room from directly along the $\bX_1$ line''---the line collapses to a point, and only the variation perpendicular to $\bX_1$ remains visible.
+    The residualised vectors $\bM_1\by$ and $\bM_1\bX_2$ live in this reduced space.
+  \item \textbf{Step 2: Regress in the cleaned space.}
+    Now perform a simple regression of $\bM_1\by$ on $\bM_1\bX_2$ in the reduced space.
+    The resulting coefficient is exactly $\bhat_2$ from the full multiple regression.
+\end{enumerate}
+This two-step procedure is not an approximation---it gives the \emph{exact same} coefficient as the full regression.
+Geometrically, the full projection onto the plane can be decomposed into a projection onto the line, followed by a projection of the remainder onto the perpendicular direction within the plane.
+
 \subsection{The effect of predictor correlation}
 
-When predictors $\bX_1$ and $\bX_2$ are correlated,
-$\bM_1\bX_2$---the residualised predictor---is \emph{shorter}
-than $\bX_2$.
-The unique information in $\bX_2$ (after removing $\bX_1$) shrinks.
+The FWL theorem reveals \emph{why} correlated predictors cause trouble.
+To understand this, think carefully about what the residualisation step does.
+
+\medskip
+\noindent\textbf{The residualised predictor and its length.}
+When we ``control for'' $\bX_1$, we replace $\bX_2$ by its residuals after regressing on $\bX_1$:
+\[
+  \bM_1\bX_2 = \bX_2 - \underbrace{\bX_1(\bX_1^\top\bX_1)^{-1}\bX_1^\top\bX_2}_{\text{part of }\bX_2\text{ explained by }\bX_1}.
+\]
+The residualised predictor $\bM_1\bX_2$ contains only the ``unique information'' in $\bX_2$---the part that $\bX_1$ cannot account for.
+
+Now think about what happens as the correlation between $\bX_1$ and $\bX_2$ changes:
+\begin{itemize}[nosep]
+  \item \textbf{Uncorrelated predictors} ($\bX_1^\top\bX_2 \approx \bm{0}$):
+    The projection of $\bX_2$ onto $\Col(\bX_1)$ is nearly zero, so $\bM_1\bX_2 \approx \bX_2$.
+    Almost all of $\bX_2$'s information is unique. The residualised predictor is long, and the coefficient is estimated precisely.
+  \item \textbf{Moderately correlated predictors}:
+    Part of $\bX_2$ is ``used up'' by $\bX_1$. The residualised predictor $\bM_1\bX_2$ is shorter. Less unique information remains, and the coefficient estimate becomes noisier.
+  \item \textbf{Highly correlated predictors} ($\bX_2\approx \bX_1\bm{c}$ for some $\bm{c}$):
+    Nearly all of $\bX_2$ is explained by $\bX_1$. The residualised predictor $\bM_1\bX_2$ is very short---close to the zero vector. There is almost no unique information left. The coefficient estimate becomes wildly unstable.
+\end{itemize}
+
+\medskip
+\noindent\textbf{Geometric picture.}
+Imagine $\bX_1$ and $\bX_2$ as two vectors in $\R^n$.
+Residualising $\bX_2$ with respect to $\bX_1$ means projecting $\bX_2$ onto the plane perpendicular to $\bX_1$ and keeping only the perpendicular component.
+If $\bX_2$ points in nearly the same direction as $\bX_1$, this perpendicular component is tiny.
+You are trying to estimate a coefficient by regressing on a near-zero vector, which amplifies any noise enormously.
+
+\medskip
+\noindent\textbf{The standard error formula.}
 The standard error of $\bhat_2$ is
 \[
   \text{SE}(\hat{\beta}_{2,j})
   = \sqrt{\frac{s^2}{\norm{\bM_1\bm{x}_{2,j}}^2}},
 \]
-where $s^2$ is the residual variance.
-As correlation increases, $\norm{\bM_1\bm{x}_{2,j}}\to 0$ and
-$\text{SE}\to\infty$.
-This is the geometric root of \emph{multicollinearity}.
+where $s^2 = \norm{\be}^2/(n-p)$ is the estimated residual variance.
+As correlation increases, $\norm{\bM_1\bm{x}_{2,j}}\to 0$ and the denominator vanishes,
+sending $\text{SE}\to\infty$.
+This is the geometric root of \emph{multicollinearity}: the coefficient is not wrong on average (it is still unbiased), but it is estimated so imprecisely that it becomes practically useless.
 
 
 %======================================================================
@@ -493,6 +603,22 @@ in the tug-of-war that determines the projection.
 
 High leverage means an observation \emph{can} distort the projection.
 Whether it \emph{does} depends on whether it also has a large residual.
+Cook's distance combines both pieces of information into a single measure of \emph{influence}.
+
+\medskip
+\noindent\textbf{The thought experiment behind Cook's distance.}
+Imagine deleting observation $i$ from the dataset and re-running the entire regression.
+How much do the fitted values change?
+If they barely move, observation $i$ is not influential.
+If they change dramatically, observation $i$ is pulling the regression toward itself.
+
+Cook's distance measures exactly this: it is proportional to the squared distance between the fitted values from the full regression and the fitted values with observation $i$ removed:
+\[
+  D_i \;\propto\; \norm{\yhat - \yhat_{(i)}}^2,
+\]
+where $\yhat_{(i)}$ denotes the fitted values from the regression that excludes observation $i$.
+The remarkable fact is that you do not actually need to refit the regression $n$ times.
+Using the hat matrix, Cook's distance can be computed in closed form.
 
 \begin{definition}
 \textbf{Cook's distance} for observation $i$ is
@@ -500,16 +626,45 @@ Whether it \emph{does} depends on whether it also has a large residual.
   D_i = \frac{e_i^2}{p\cdot\text{MSE}}
         \cdot \frac{h_{ii}}{(1 - h_{ii})^2},
 \]
-where $\text{MSE} = \norm{\be}^2/(n-p)$.
+where $\text{MSE} = \norm{\be}^2/(n-p)$ is the mean squared error.
 \end{definition}
+
+\noindent\textbf{Reading the formula.}
+Cook's distance is a product of two factors:
+\begin{enumerate}[nosep]
+  \item $\frac{e_i^2}{p\cdot\text{MSE}}$ --- this is the \textbf{surprise factor}.
+    It measures how large the residual of observation $i$ is, relative to the overall noise level.
+    A large residual means the observation does not fit the current model well; it ``wants'' the regression plane to tilt toward it.
+  \item $\frac{h_{ii}}{(1 - h_{ii})^2}$ --- this is the \textbf{leverage factor}.
+    It measures how much ``mechanical advantage'' the observation has.
+    An observation at an extreme predictor value ($h_{ii}$ close to 1) can exert enormous force on the regression; an observation near the center of the predictor cloud ($h_{ii}$ close to $1/n$) has little leverage, no matter how unusual its $y$-value.
+\end{enumerate}
+
+\medskip
+\noindent\textbf{An analogy.}
+Think of the regression line as a seesaw (lever) balanced on the centroid of the data.
+\emph{Leverage} ($h_{ii}$) is how far from the fulcrum observation $i$ sits---its position along the seesaw.
+The \emph{residual} ($e_i$) is the force it pushes with---how far above or below the seesaw it is.
+Cook's distance is the resulting \emph{torque}: force times distance from the fulcrum.
+A person sitting at the end of the seesaw (high leverage) and pushing hard (large residual) tilts the seesaw a lot. A person sitting near the fulcrum (low leverage), no matter how hard they push, barely tilts it.
+
+\medskip
+\noindent\textbf{When to worry.}
+A common rule of thumb is to investigate observations with $D_i > 4/n$ or $D_i > 1$.
+But the real message is qualitative: look at observations with large Cook's distance
+and ask whether they represent data errors, unusual subpopulations, or genuine outliers
+that should influence the model.
 
 \begin{keyinsight}
 \textbf{Influence = leverage $\times$ surprise.}
 An observation needs \emph{both} a long arm ($h_{ii}$ large) \emph{and}
 a strong pull ($|e_i|$ large) to actually move the regression.
-A high-leverage observation that fits the trend is harmless.
-An observation with a moderate leverage but a large residual at an
-unusual predictor combination can quietly torque the coefficients.
+A high-leverage observation that fits the trend is harmless
+(large $h_{ii}$, small $e_i$, so $D_i$ is small).
+A central observation with a large residual has limited impact
+(small $h_{ii}$, large $e_i$, so $D_i$ is moderate).
+The dangerous case is an observation that is \emph{both} extreme in its
+predictor values \emph{and} does not follow the pattern of the other data.
 \end{keyinsight}
 
 
@@ -521,13 +676,51 @@ unusual predictor combination can quietly torque the coefficients.
 
 When predictors are nearly linearly dependent, $\Col(\bX)$ degenerates
 from a ``thick'' plane into a paper-thin sliver.
-The eigenvalue decomposition of $\bX^\top\bX$ reveals this:
+Let us understand why this is dangerous and what exactly goes wrong.
+
+\medskip
+\noindent\textbf{What multicollinearity means.}
+Multicollinearity occurs when one predictor can be approximately written as a linear combination of others.
+For example, if $x_2 \approx 3x_1 + 2x_3$, then the three predictors contain nearly the same information.
+The design matrix $\bX$ is close to being rank-deficient.
+
+\medskip
+\noindent\textbf{Why it is dangerous: the pancake analogy.}
+Consider fitting a model with two highly correlated predictors.
+Geometrically, the column space $\Col(\bX)$ is a 2-dimensional plane in $\R^n$.
+When the two predictors are nearly proportional, this plane is not a ``square'' plane---it is extremely elongated, like a thin pancake or a nearly 1-dimensional line.
+
+Now imagine projecting the data vector $\by$ onto this thin pancake.
+The projection itself is fine: $\yhat$ lands on the pancake and $\be$ is perpendicular.
+The \emph{total} prediction $\yhat$ is stable.
+But the \emph{individual coefficients} are not: there are many different ways to decompose $\yhat$ into contributions along two nearly parallel directions.
+A tiny change in $\by$ can slide $\yhat$ along the pancake, dramatically changing the decomposition $(\hat{\beta}_1, \hat{\beta}_2)$ even though $\yhat = \hat{\beta}_1\bm{x}_1 + \hat{\beta}_2\bm{x}_2$ stays almost the same.
+
+\medskip
+\noindent\textbf{A concrete example.}
+Suppose $x_2 = x_1 + \epsilon$ where $\epsilon$ is tiny noise.
+Then $\hat{\beta}_1 x_1 + \hat{\beta}_2 x_2 \approx (\hat{\beta}_1 + \hat{\beta}_2)x_1$.
+The model can only estimate the \emph{sum} $\hat{\beta}_1 + \hat{\beta}_2$ reliably, not the individual values.
+If you run the regression on Monday you might get $(\hat{\beta}_1, \hat{\beta}_2) = (5, 3)$;
+on Tuesday with slightly different data, you might get $(50, -42)$.
+Both give approximately the same predictions, but the individual coefficients are meaningless.
+
+\medskip
+\noindent\textbf{The eigenvalue perspective.}
+The eigenvalue decomposition of $\bX^\top\bX$ makes this precise:
 \[
   \bX^\top\bX = \bQ\bm{\Lambda}\bQ^\top,
   \qquad
   \bm{\Lambda} = \diag(\lambda_1,\dots,\lambda_p),
   \quad \lambda_1\ge\cdots\ge\lambda_p\ge 0.
 \]
+The eigenvalues measure the ``width'' of the column space in each principal direction.
+A large eigenvalue $\lambda_k$ means the column space extends far in direction $\bm{q}_k$---the projection is stable there.
+A small eigenvalue $\lambda_k$ means the column space is paper-thin in that direction---the projection's location is poorly determined.
+
+The variance of the OLS coefficients is $\text{Var}(\bhat) = \sigma^2(\bX^\top\bX)^{-1} = \sigma^2\bQ\bm{\Lambda}^{-1}\bQ^\top$.
+In the direction of the smallest eigenvalue, the variance is $\sigma^2/\lambda_p$---which explodes when $\lambda_p$ is small.
+
 The \textbf{condition number} $\kappa = \lambda_1/\lambda_p$
 measures the aspect ratio of the eigenvalue ellipsoid.
 When $\kappa \gg 1$, the column space is elongated: the projection
@@ -537,9 +730,19 @@ unstable. Small perturbations in $\by$ cause large swings
 in individual coefficients.
 
 \medskip
+\noindent\textbf{The key danger, summarised.}
+Multicollinearity does \emph{not} make the overall model bad---$R^2$ and the predicted values $\yhat$ may be perfectly fine.
+What it destroys is the interpretability of individual coefficients.
+You cannot say ``a one-unit increase in $x_2$ leads to a $\hat{\beta}_2$ change in $y$, holding $x_1$ constant'' when $x_1$ and $x_2$ move together so tightly that ``holding $x_1$ constant'' is practically impossible.
+
+\medskip
 \noindent\textbf{Diagnostic:} The condition number $\kappa$ and the
 eigenvalue spectrum. If $\kappa > 30$, investigate; if $\kappa > 100$,
 individual coefficients may be unreliable.
+Another common diagnostic is the \textbf{Variance Inflation Factor}
+(VIF): $\text{VIF}_j = 1/(1-R_j^2)$, where $R_j^2$ is the $R^2$ from
+regressing predictor $x_j$ on all other predictors.
+$\text{VIF}_j > 10$ is often flagged as concerning.
 
 \subsection{Omitted variable bias: the geometry can't warn you}
 
