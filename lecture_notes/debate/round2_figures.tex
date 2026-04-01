@@ -1,0 +1,498 @@
+% ══════════════════════════════════════════════════════════════════════════
+%  Round 2 Figures — TikZ diagrams for the Geometric Regression notes
+%  Requires: tikz, tikz-3dplot, arrows.meta, calc, decorations.pathreplacing
+%  Uses document colours: colspace, response, projection, residual,
+%                         constraint, secondary
+% ══════════════════════════════════════════════════════════════════════════
+
+
+% ──────────────────────────────────────────────────────────────────────────
+%  FIGURE 1: The Flashlight Metaphor (Prologue)
+% ──────────────────────────────────────────────────────────────────────────
+\begin{figure}[ht]
+\centering
+\tdplotsetmaincoords{70}{120}
+\begin{tikzpicture}[tdplot_main_coords, scale=1.6, >=Stealth]
+
+  % --- Ground plane Col(X) ---
+  \fill[colspace!12] (-2.8,-2.8,0) -- (2.8,-2.8,0) -- (2.8,2.8,0) -- (-2.8,2.8,0) -- cycle;
+  \draw[colspace!40] (-2.8,-2.8,0) -- (2.8,-2.8,0) -- (2.8,2.8,0) -- (-2.8,2.8,0) -- cycle;
+  \node[colspace!80!black, font=\footnotesize\itshape] at (2.2,-2.2,0) {$\operatorname{Col}(\bm{X})$};
+
+  % --- Flashlight (cone of light from above) ---
+  \coordinate (lamp) at (0.8,0.3,4.5);
+  % Light cone: four semi-transparent rays
+  \foreach \dx/\dy in {-0.6/-0.6, 0.6/-0.6, 0.6/0.6, -0.6/0.6}{
+    \draw[response!30, line width=0.4pt] (lamp) -- ($(0.8,0.3,0)+(\dx,\dy,0)$);
+  }
+  % Filled cone hint
+  \fill[response!8] (lamp) -- (0.2,-0.3,0) -- (1.4,-0.3,0) -- (1.4,0.9,0) -- (0.2,0.9,0) -- cycle;
+
+  % Flashlight body
+  \shade[ball color=secondary!60] (lamp) circle (3pt);
+  \node[above, secondary, font=\footnotesize] at (lamp) {flashlight};
+
+  % --- Object y floating above the plane ---
+  \coordinate (ypos) at (0.8, 0.3, 2.6);
+  \shade[ball color=response!80] (ypos) circle (3.5pt);
+  \node[right=4pt, response!80!black, font=\bfseries] at (ypos) {$\bm{y}$};
+
+  % --- Shadow yhat on the plane ---
+  \coordinate (yhat) at (0.8, 0.3, 0);
+  \shade[ball color=projection!80] (yhat) circle (3.5pt);
+  \node[below right=2pt, projection!80!black, font=\bfseries] at (yhat) {$\hat{\bm{y}}$};
+
+  % --- Residual: dashed vertical line y -> yhat ---
+  \draw[residual, thick, dashed] (ypos) -- (yhat);
+  \node[left=3pt, residual!80!black, font=\footnotesize\bfseries] at ($(ypos)!0.5!(yhat)$) {$\bm{e}$};
+
+  % --- Right-angle mark at yhat ---
+  \draw[secondary, line width=0.6pt]
+    ($(yhat)+(0,0.18,0)$) -- ($(yhat)+(0,0.18,0.18)$) -- ($(yhat)+(0,0,0.18)$);
+
+\end{tikzpicture}
+\caption{The flashlight metaphor.  Think of the data vector~$\bm{y}$ as an
+object suspended above the column space of~$\bm{X}$.  A flashlight shining
+straight down casts a \emph{shadow}~$\hat{\bm{y}}$ on the plane.  The
+vertical gap between object and shadow is the residual~$\bm{e}$, and it
+meets the plane at a right angle --- exactly as orthogonal projection
+demands.}
+\label{fig:flashlight}
+\end{figure}
+
+
+% ──────────────────────────────────────────────────────────────────────────
+%  FIGURE 2: Projection in R³ (Section 2)
+% ──────────────────────────────────────────────────────────────────────────
+\begin{figure}[ht]
+\centering
+\tdplotsetmaincoords{65}{125}
+\begin{tikzpicture}[tdplot_main_coords, scale=1.5, >=Stealth]
+
+  % --- Plane Col(X) through origin ---
+  \fill[colspace!10] (-3,-2.5,0) -- (3,-2.5,0) -- (3,2.5,0) -- (-3,2.5,0) -- cycle;
+  \draw[colspace!35, line width=0.5pt]
+    (-3,-2.5,0) -- (3,-2.5,0) -- (3,2.5,0) -- (-3,2.5,0) -- cycle;
+  \node[colspace!80!black, font=\footnotesize\itshape] at (2.5,-2.0,0)
+    {$\operatorname{Col}(\bm{X})$};
+
+  % --- Origin ---
+  \fill[secondary] (0,0,0) circle (1.5pt);
+  \node[below left, secondary, font=\scriptsize] at (0,0,0) {$\bm{0}$};
+
+  % --- Column vectors x1, x2 in the plane ---
+  \draw[->, colspace, very thick] (0,0,0) -- (2.4,0.6,0)
+    node[right, font=\footnotesize\bfseries] {$\bm{x}_1$};
+  \draw[->, colspace!70!black, very thick] (0,0,0) -- (0.8,2.2,0)
+    node[above, font=\footnotesize\bfseries] {$\bm{x}_2$};
+
+  % --- Projection yhat ---
+  \coordinate (yhat) at (1.8,1.4,0);
+  \draw[->, projection, very thick] (0,0,0) -- (yhat)
+    node[below right=1pt, font=\footnotesize\bfseries] {$\hat{\bm{y}}$};
+
+  % --- Data vector y above the plane ---
+  \coordinate (y) at (1.8,1.4,2.4);
+  \draw[->, response, very thick] (0,0,0) -- (y)
+    node[above right=1pt, font=\footnotesize\bfseries] {$\bm{y}$};
+
+  % --- Residual e = y - yhat ---
+  \draw[->, residual, thick, dashed] (yhat) -- (y)
+    node[midway, right=3pt, font=\footnotesize\bfseries] {$\bm{e}$};
+
+  % --- Right angle mark at yhat ---
+  % Two edges of the square in the plane and up
+  \draw[secondary, line width=0.6pt]
+    ($(yhat)+(-0.18,0,0)$) -- ($(yhat)+(-0.18,0,0.18)$) -- ($(yhat)+(0,0,0.18)$);
+
+  % --- Annotation ---
+  \node[secondary, font=\scriptsize, align=center] at (-1.8,1.6,1.6)
+    {perpendicular\\drop};
+  \draw[->, secondary, thin] (-1.2,1.5,1.4) -- ($(yhat)+(0,0,1.0)$);
+
+\end{tikzpicture}
+\caption{Projection in~$\mathbb{R}^3$.  The column space
+$\operatorname{Col}(\bm{X})$ is the plane spanned by~$\bm{x}_1$
+and~$\bm{x}_2$.  The fitted vector~$\hat{\bm{y}}$ is the point in this
+plane closest to~$\bm{y}$, obtained by dropping a perpendicular.  The
+residual~$\bm{e}=\bm{y}-\hat{\bm{y}}$ is orthogonal to every vector in
+the plane, which is precisely the content of the normal
+equations~$\bm{X}^\top\bm{e}=\bm{0}$.}
+\label{fig:projection-r3}
+\end{figure}
+
+
+% ──────────────────────────────────────────────────────────────────────────
+%  FIGURE 3: FWL — Two-Step Projection (Section 5)
+% ──────────────────────────────────────────────────────────────────────────
+\begin{figure}[ht]
+\centering
+\tdplotsetmaincoords{62}{130}
+\begin{tikzpicture}[tdplot_main_coords, scale=1.35, >=Stealth]
+
+  % --- Full plane Col(X1,X2) ---
+  \fill[colspace!8] (-3.2,-2.6,0) -- (3.2,-2.6,0) -- (3.2,2.6,0) -- (-3.2,2.6,0) -- cycle;
+  \draw[colspace!30, line width=0.4pt]
+    (-3.2,-2.6,0) -- (3.2,-2.6,0) -- (3.2,2.6,0) -- (-3.2,2.6,0) -- cycle;
+  \node[colspace!70!black, font=\scriptsize\itshape] at (2.8,-2.1,0)
+    {$\operatorname{Col}(\bm{X}_1,\bm{X}_2)$};
+
+  % --- Col(X1) as a line in the plane ---
+  \draw[colspace!70, very thick] (-2.8,-0.7,0) -- (2.8,0.7,0);
+  \node[colspace!80!black, font=\scriptsize\itshape] at (2.9,1.0,0)
+    {$\operatorname{Col}(\bm{X}_1)$};
+
+  % --- x2 in the plane ---
+  \draw[->, colspace!60!black, thick] (0,0,0) -- (1.0,2.2,0)
+    node[above left, font=\scriptsize\bfseries] {$\bm{x}_2$};
+
+  % --- y above the plane ---
+  \coordinate (y) at (1.6,1.6,2.6);
+  \draw[->, response, very thick] (0,0,0) -- (y)
+    node[above right, font=\footnotesize\bfseries] {$\bm{y}$};
+
+  % --- Projection of x2 onto Col(X1) ---
+  \coordinate (px2) at (1.2,0.3,0);
+  \draw[->, secondary, thin] (0,0,0) -- (px2);
+
+  % --- M1 x2 = residualised x2 (in plane, perp to Col(X1)) ---
+  \coordinate (m1x2) at (-0.2,1.9,0);
+  \draw[->, constraint, thick] (px2) -- (1.0,2.2,0)
+    node[midway, above left=-1pt, font=\scriptsize\bfseries] {$\bm{M}_1\bm{x}_2$};
+
+  % --- Projection of y onto Col(X1): P1 y ---
+  \coordinate (p1y) at (1.8,0.45,0);
+  % --- M1 y: y residualised from Col(X1) ---
+  \coordinate (m1y) at (-0.2,1.15,2.6);
+  % Show M1 y from p1y direction... approximate as from y minus its Col(X1) component
+  % For visual clarity: show M1y as a vector in the "orthogonal complement + z" direction
+  \coordinate (m1yend) at (0.4,1.9,2.2);
+  \draw[->, constraint!70!black, thick, dashed] (0,0,0) -- (m1yend)
+    node[left=2pt, font=\scriptsize\bfseries] {$\bm{M}_1\bm{y}$};
+
+  % --- Full projection yhat on the plane ---
+  \coordinate (yhat) at (1.6,1.6,0);
+  \draw[->, projection, very thick] (0,0,0) -- (yhat)
+    node[below right=1pt, font=\footnotesize\bfseries] {$\hat{\bm{y}}$};
+
+  % --- Residual e ---
+  \draw[->, residual, thick, dashed] (yhat) -- (y)
+    node[midway, right=2pt, font=\footnotesize\bfseries] {$\bm{e}$};
+
+  % --- Step labels ---
+  \node[constraint!80!black, font=\scriptsize, align=center,
+    fill=white, fill opacity=0.85, text opacity=1, inner sep=2pt,
+    rounded corners=1pt]
+    at (-2.4,2.0,1.8)
+    {\textbf{Step 1}\\[1pt]Residualise:\\$\bm{M}_1\bm{y}$, $\bm{M}_1\bm{x}_2$};
+
+  \node[projection!80!black, font=\scriptsize, align=center,
+    fill=white, fill opacity=0.85, text opacity=1, inner sep=2pt,
+    rounded corners=1pt]
+    at (3.0,1.8,1.4)
+    {\textbf{Step 2}\\[1pt]Regress $\bm{M}_1\bm{y}$\\on $\bm{M}_1\bm{x}_2$};
+
+  % --- Right angle at yhat ---
+  \draw[secondary, line width=0.5pt]
+    ($(yhat)+(-0.15,0,0)$) -- ($(yhat)+(-0.15,0,0.15)$) -- ($(yhat)+(0,0,0.15)$);
+
+  % Origin
+  \fill[secondary] (0,0,0) circle (1.2pt);
+  \node[below left, secondary, font=\scriptsize] at (-0.1,-0.1,0) {$\bm{0}$};
+
+\end{tikzpicture}
+\caption{The Frisch--Waugh--Lovell theorem as a two-step projection.
+\textbf{Step~1}: residualise both~$\bm{y}$ and~$\bm{x}_2$ with respect
+to~$\operatorname{Col}(\bm{X}_1)$ using the annihilator~$\bm{M}_1$,
+sweeping out the effect of~$\bm{X}_1$.
+\textbf{Step~2}: regress~$\bm{M}_1\bm{y}$ on~$\bm{M}_1\bm{x}_2$ in the
+reduced orthogonal complement.  The resulting coefficient~$\hat\beta_2$
+is identical to the one obtained from the full regression, and the
+final fitted vector~$\hat{\bm{y}}$ is the same.}
+\label{fig:fwl}
+\end{figure}
+
+
+% ──────────────────────────────────────────────────────────────────────────
+%  FIGURE 4: Multicollinearity — Circle vs Pancake (Section 6)
+% ──────────────────────────────────────────────────────────────────────────
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[>=Stealth, scale=1.0]
+
+  % ============== LEFT: Well-conditioned ==============
+  \begin{scope}[shift={(-4.8,0)}]
+    \node[secondary, font=\small\bfseries] at (0,3.6) {Well-conditioned};
+
+    % Column vectors at ~60 degrees
+    \draw[->, colspace, very thick] (0,0) -- (2.6,0.5)
+      node[right, font=\footnotesize\bfseries] {$\bm{x}_1$};
+    \draw[->, colspace!70!black, very thick] (0,0) -- (0.8,2.5)
+      node[above, font=\footnotesize\bfseries] {$\bm{x}_2$};
+
+    % Projection yhat
+    \coordinate (yhat) at (1.8,1.6);
+    \draw[->, projection, thick] (0,0) -- (yhat)
+      node[below right=-1pt, font=\footnotesize\bfseries] {$\hat{\bm{y}}$};
+
+    % Decomposition parallelogram
+    % yhat = a*x1 + b*x2
+    % Component along x1
+    \coordinate (comp1end) at (1.35,0.26);
+    % Component along x2 from comp1end to yhat
+    \draw[colspace!50, thin, dashed] (comp1end) -- (yhat);
+    \draw[colspace!50, thin, dashed] (0.45,1.34) -- (yhat);
+
+    % Angle arc
+    \draw[secondary, thin] (0.7,0.135) arc[start angle=11,end angle=72,radius=0.71];
+    \node[secondary, font=\scriptsize] at (0.45,0.65) {$60°$};
+
+    % Stable label
+    \node[projection!70!black, font=\scriptsize, align=center] at (0,-0.8)
+      {Unique, stable\\decomposition};
+  \end{scope}
+
+  % ============== RIGHT: Ill-conditioned ==============
+  \begin{scope}[shift={(4.2,0)}]
+    \node[secondary, font=\small\bfseries] at (0,3.6) {Ill-conditioned};
+
+    % Column vectors nearly parallel
+    \draw[->, colspace, very thick] (0,0) -- (2.5,1.0)
+      node[right, font=\footnotesize\bfseries] {$\bm{x}_1$};
+    \draw[->, colspace!70!black, very thick] (0,0) -- (2.3,1.2)
+      node[above right, font=\footnotesize\bfseries] {$\bm{x}_2$};
+
+    % Thin sliver region
+    \fill[colspace!6] (0,0) -- (2.5,1.0) -- (2.3,1.2) -- cycle;
+
+    % Projection yhat (stable)
+    \coordinate (yhat) at (1.9,0.9);
+    \draw[->, projection, thick] (0,0) -- (yhat)
+      node[above left=-2pt, font=\footnotesize\bfseries] {$\hat{\bm{y}}$};
+
+    % Decomposition 1: one way to split
+    \draw[response!60, thin, dashed] (0,0) -- (3.2,1.28);
+    \draw[response!60, thin, dashed] (0,0) -- (-1.15,-0.6);
+    \coordinate (d1a) at (3.2,1.28);
+    \coordinate (d1b) at (-1.15,-0.6);
+    \draw[response!50, thin, dashed] (d1a) -- (yhat);
+
+    % Decomposition 2: another way to split (shifted)
+    \draw[residual!50, thin, dashed] (0,0) -- (-0.5,-0.2);
+    \draw[residual!50, thin, dashed] (0,0) -- (2.53,1.32);
+    \coordinate (d2a) at (-0.5,-0.2);
+    \draw[residual!50, thin, dashed] (d2a) -- (yhat);
+
+    % Sliding annotation
+    \draw[<->, secondary, thick] (2.8,1.15) -- (-0.8,-0.35);
+    \node[secondary, font=\scriptsize, align=center, fill=white,
+      inner sep=1pt] at (1.0,0.0)
+      {coefficients\\slide};
+
+    % Angle arc (small)
+    \draw[secondary, thin] (0.6,0.24) arc[start angle=22,end angle=28,radius=0.64];
+    \node[secondary, font=\scriptsize] at (1.0,0.55) {$\approx 5°$};
+
+    % Unstable label
+    \node[residual!70!black, font=\scriptsize, align=center] at (0,-0.8)
+      {$\hat{\bm{y}}$ stable, but\\$\hat\beta_1,\hat\beta_2$ wildly unstable};
+  \end{scope}
+
+  % Dividing line
+  \draw[secondary!30, thin] (0,-1.2) -- (0,3.8);
+
+\end{tikzpicture}
+\caption{Multicollinearity as geometry.
+\textbf{Left}: when the predictor vectors are well-separated
+($\sim\!60°$ apart), the column space is a ``fat'' parallelogram and the
+decomposition $\hat{\bm{y}}=\hat\beta_1\bm{x}_1+\hat\beta_2\bm{x}_2$
+is stable.
+\textbf{Right}: when the predictors are nearly collinear ($\sim\!5°$),
+the column space collapses to a thin sliver.  The
+projection~$\hat{\bm{y}}$ barely changes, but the individual
+coefficients~$\hat\beta_1$ and~$\hat\beta_2$ can slide
+dramatically along the sliver direction --- they are poorly identified
+even though the fit itself is fine.}
+\label{fig:multicollinearity}
+\end{figure}
+
+
+% ──────────────────────────────────────────────────────────────────────────
+%  FIGURE 5: Ridge vs LASSO Constraint Regions (Section 7)
+% ──────────────────────────────────────────────────────────────────────────
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[>=Stealth, scale=1.15]
+
+  % --- Axes ---
+  \draw[->, secondary, thick] (-3.2,0) -- (4.2,0) node[right, font=\small] {$\beta_1$};
+  \draw[->, secondary, thick] (0,-3.2) -- (0,4.2) node[above, font=\small] {$\beta_2$};
+
+  % --- OLS solution ---
+  \coordinate (ols) at (2.8,2.4);
+  \fill[response] (ols) circle (3pt);
+  \node[above right, response!80!black, font=\footnotesize\bfseries] at (ols)
+    {$\hat{\bm{\beta}}_{\mathrm{OLS}}$};
+
+  % --- RSS contour ellipses (centered on OLS, tilted) ---
+  % Rotation angle ~ 25 degrees, semi-axes ratio ~2:1
+  \foreach \r in {0.6, 1.2, 1.85, 2.6, 3.4} {
+    \draw[secondary!35, thin, rotate around={25:(ols)}]
+      (ols) ellipse ({\r} and {\r*0.45});
+  }
+  \node[secondary, font=\scriptsize] at (3.8,0.6) {RSS contours};
+
+  % --- L2 constraint region (circle) ---
+  \draw[constraint, thick, fill=constraint!8] (0,0) circle (1.5);
+  \node[constraint!80!black, font=\scriptsize] at (-1.0,-1.8)
+    {$\beta_1^2+\beta_2^2 \le t$};
+
+  % --- L1 constraint region (diamond) ---
+  \draw[constraint, thick, dashed, fill=constraint!4]
+    (1.9,0) -- (0,1.9) -- (-1.9,0) -- (0,-1.9) -- cycle;
+  \node[constraint!80!black, font=\scriptsize] at (1.7,-1.8)
+    {$|\beta_1|+|\beta_2| \le t$};
+
+  % --- Ridge solution (ellipse tangent to circle) ---
+  \coordinate (ridge) at ({1.5*cos(40)},{1.5*sin(40)});
+  \fill[projection] (ridge) circle (3pt);
+  \node[above left, projection!80!black, font=\footnotesize\bfseries] at (ridge)
+    {$\hat{\bm{\beta}}_{\mathrm{Ridge}}$};
+  % Ridge ellipse (approximate tangent)
+  \draw[projection!60, thin, rotate around={25:(ols)}]
+    (ols) ellipse ({2.05} and {2.05*0.45});
+
+  % --- LASSO solution (ellipse tangent to diamond corner) ---
+  \coordinate (lasso) at (1.9,0);
+  \fill[residual] (lasso) circle (3pt);
+  \node[below right, residual!80!black, font=\footnotesize\bfseries] at (lasso)
+    {$\hat{\bm{\beta}}_{\mathrm{LASSO}}$};
+  % LASSO ellipse (approximate tangent at corner)
+  \draw[residual!50, thin, rotate around={25:(ols)}]
+    (ols) ellipse ({1.65} and {1.65*0.45});
+
+  % --- Annotation: why corners produce zeros ---
+  \draw[->, secondary, thin] (3.0,-2.6) -- ($(lasso)+(0.15,-0.15)$);
+  \node[secondary, font=\scriptsize, align=left, text width=3.2cm] at (3.5,-3.2)
+    {Diamond corner lies on axis:\\$\hat\beta_2 = 0$ (sparsity!)};
+
+  % --- Annotation: circle has no corners ---
+  \draw[->, secondary, thin] (-2.8,2.2) -- ($(ridge)+(-0.15,0.1)$);
+  \node[secondary, font=\scriptsize, align=left, text width=3cm] at (-3.2,2.8)
+    {Circle is smooth: solution\\generically has $\hat\beta_j\neq 0$};
+
+\end{tikzpicture}
+\caption{Ridge vs.\ LASSO constraint regions.  The OLS
+estimate~$\hat{\bm{\beta}}_{\mathrm{OLS}}$ (amber dot) sits at the
+centre of the elliptical RSS contours.  Regularisation constrains the
+solution to lie within a region around the origin.  \textbf{Ridge}
+(solid circle, $L^2$) shrinks all coefficients smoothly toward zero.
+\textbf{LASSO} (dashed diamond, $L^1$) has \emph{corners} on the
+coordinate axes; the first contour ellipse to touch the diamond
+typically hits a corner, setting some coefficients exactly to zero
+and producing a sparse model.}
+\label{fig:ridge-lasso}
+\end{figure}
+
+
+% ──────────────────────────────────────────────────────────────────────────
+%  FIGURE 6: The F-test — Gap Between Two Projections (Section 8)
+% ──────────────────────────────────────────────────────────────────────────
+\begin{figure}[ht]
+\centering
+\tdplotsetmaincoords{62}{125}
+\begin{tikzpicture}[tdplot_main_coords, scale=1.5, >=Stealth]
+
+  % --- Full plane Col(X) ---
+  \fill[colspace!10] (-3,-2.5,0) -- (3.2,-2.5,0) -- (3.2,2.5,0) -- (-3,2.5,0) -- cycle;
+  \draw[colspace!30, line width=0.4pt]
+    (-3,-2.5,0) -- (3.2,-2.5,0) -- (3.2,2.5,0) -- (-3,2.5,0) -- cycle;
+  \node[colspace!70!black, font=\scriptsize\itshape] at (2.7,-2.0,0)
+    {$\operatorname{Col}(\bm{X})$};
+
+  % --- Restricted subspace Col(X_R) as a line in the plane ---
+  \draw[constraint!70, very thick] (-2.8,-0.56,0) -- (2.8,0.56,0);
+  \node[constraint!80!black, font=\scriptsize\itshape] at (2.9,0.9,0)
+    {$\operatorname{Col}(\bm{X}_R)$};
+
+  % Origin
+  \fill[secondary] (0,0,0) circle (1.2pt);
+  \node[below left, secondary, font=\scriptsize] at (0,0,0) {$\bm{0}$};
+
+  % --- y above the plane ---
+  \coordinate (y) at (1.6,1.4,2.6);
+  \draw[->, response, very thick] (0,0,0) -- (y)
+    node[above right, font=\footnotesize\bfseries] {$\bm{y}$};
+
+  % --- yhat: projection onto full Col(X) ---
+  \coordinate (yhat) at (1.6,1.4,0);
+  \draw[->, projection, very thick] (0,0,0) -- (yhat)
+    node[below right=1pt, font=\footnotesize\bfseries] {$\hat{\bm{y}}$};
+
+  % --- yhatR: projection onto Col(X_R) (on the line) ---
+  \coordinate (yhatR) at (1.75,0.35,0);
+  \draw[->, constraint, thick] (0,0,0) -- (yhatR)
+    node[below=3pt, font=\footnotesize\bfseries] {$\hat{\bm{y}}_R$};
+
+  % --- Residual e = y - yhat (perpendicular to plane, going up) ---
+  \draw[->, residual, thick, dashed] (yhat) -- (y);
+  \node[right=3pt, residual!80!black, font=\footnotesize] at ($(yhat)!0.5!(y)$)
+    {$\bm{e}=\bm{y}-\hat{\bm{y}}$};
+
+  % --- Gap: yhat - yhatR (in the plane, perp to Col(X_R)) ---
+  \draw[->, response!80!black, thick] (yhatR) -- (yhat);
+  \node[above=3pt, response!80!black, font=\footnotesize] at ($(yhatR)!0.5!(yhat)$)
+    {$\hat{\bm{y}}-\hat{\bm{y}}_R$};
+
+  % --- Right angle 1: e perpendicular to plane at yhat ---
+  \draw[secondary, line width=0.5pt]
+    ($(yhat)+(-0.16,0,0)$) -- ($(yhat)+(-0.16,0,0.16)$) -- ($(yhat)+(0,0,0.16)$);
+
+  % --- Right angle 2: gap perpendicular to Col(X_R) at yhatR ---
+  % Direction along Col(X_R): (1,0.2,0) normalised
+  \pgfmathsetmacro{\ux}{0.98}
+  \pgfmathsetmacro{\uy}{0.196}
+  % Perpendicular in-plane: (-0.196, 0.98, 0)
+  \pgfmathsetmacro{\vx}{-0.196}
+  \pgfmathsetmacro{\vy}{0.98}
+  \draw[secondary, line width=0.5pt]
+    ($(yhatR)+0.14*(\ux,\uy,0)$)
+    -- ($(yhatR)+0.14*(\ux,\uy,0)+0.14*(\vx,\vy,0)$)
+    -- ($(yhatR)+0.14*(\vx,\vy,0)$);
+
+  % --- Right angle 3: (yhat - yhatR) perpendicular to e ---
+  % At yhat, between the gap direction and the e direction
+  % gap direction from yhatR to yhat ~ (-0.15, 1.05, 0), roughly (0,1,0)
+  \draw[secondary, line width=0.5pt]
+    ($(yhat)+(0,-0.16,0)$) -- ($(yhat)+(0,-0.16,0.16)$) -- ($(yhat)+(0,0,0.16)$);
+
+  % --- F-statistic annotation ---
+  \draw[decorate, decoration={brace, amplitude=4pt, mirror},
+    secondary, thick]
+    ($(yhatR)+(0.2,-0.15,0)$) -- ($(yhat)+(0.2,-0.15,0)$);
+  \node[secondary, font=\scriptsize, right, align=left] at (2.4,0.2,0)
+    {$\|\hat{\bm{y}}-\hat{\bm{y}}_R\|^2/(p-q)$\\[2pt]
+     $F$-numerator};
+
+  \draw[decorate, decoration={brace, amplitude=4pt},
+    secondary, thick]
+    ($(yhat)+(0.35,0,0)$) -- ($(y)+(0.35,0,0)$);
+  \node[secondary, font=\scriptsize, right, align=left] at (2.3,0.7,1.3)
+    {$\|\bm{e}\|^2/(n-p)$\\[2pt]
+     $F$-denominator};
+
+\end{tikzpicture}
+\caption{The $F$-test as the gap between two projections.
+$\hat{\bm{y}}_R$ is the projection of~$\bm{y}$ onto the restricted
+subspace $\operatorname{Col}(\bm{X}_R)$ (a line), and $\hat{\bm{y}}$ is
+the projection onto the full $\operatorname{Col}(\bm{X})$ (a plane
+containing the line).  The three segments are mutually perpendicular by
+the Pythagorean theorem:
+$\|\bm{y}-\hat{\bm{y}}_R\|^2 =
+ \|\hat{\bm{y}}-\hat{\bm{y}}_R\|^2 + \|\bm{e}\|^2$.
+The $F$-statistic compares the ``explained gap''
+$\|\hat{\bm{y}}-\hat{\bm{y}}_R\|^2$ (what the extra predictors bought)
+to the residual $\|\bm{e}\|^2$ (what remains unexplained), each
+normalised by its degrees of freedom.}
+\label{fig:f-test}
+\end{figure}

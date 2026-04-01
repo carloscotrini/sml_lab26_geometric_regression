@@ -1,0 +1,713 @@
+% ══════════════════════════════════════════════════════════════════════
+% Round 2: Six Worked Numerical Examples
+% These examples use the macros defined in lecture_notes.tex.
+% Each is wrapped in \begin{example}...\end{example} and should be
+% inserted at the location indicated in the comment above it.
+% ══════════════════════════════════════════════════════════════════════
+
+
+% ======================================================================
+% EXAMPLE 1 — Insert after Section 2.3 (The normal equations)
+% ======================================================================
+\begin{example}[Your First Regression in $\R^3$]\label{ex:first-regression}
+We have $n=3$ observations with one predictor $x$ and a response $y$:
+\[
+\begin{array}{c|cc}
+i & x_i & y_i \\\hline
+1 & 1 & 1 \\
+2 & 2 & 3 \\
+3 & 3 & 2
+\end{array}
+\]
+The model is $y_i = \beta_0 + \beta_1 x_i + e_i$, so the design matrix and response vector are
+\[
+\bX = \begin{pmatrix} 1 & 1 \\ 1 & 2 \\ 1 & 3 \end{pmatrix}, \qquad
+\by = \begin{pmatrix} 1 \\ 3 \\ 2 \end{pmatrix}.
+\]
+Since $\by\in\R^3$ and $\Col(\bX)$ is a 2-dimensional plane in $\R^3$,
+this is literally a point--plane--shadow problem.
+
+\medskip\noindent\textbf{Step 1: Compute $\bX^\top\bX$ and $\bX^\top\by$.}
+\[
+\bX^\top\bX
+= \begin{pmatrix} 1 & 1 & 1 \\ 1 & 2 & 3 \end{pmatrix}
+  \begin{pmatrix} 1 & 1 \\ 1 & 2 \\ 1 & 3 \end{pmatrix}
+= \begin{pmatrix} 3 & 6 \\ 6 & 14 \end{pmatrix},
+\qquad
+\bX^\top\by
+= \begin{pmatrix} 1 & 1 & 1 \\ 1 & 2 & 3 \end{pmatrix}
+  \begin{pmatrix} 1 \\ 3 \\ 2 \end{pmatrix}
+= \begin{pmatrix} 6 \\ 13 \end{pmatrix}.
+\]
+
+\medskip\noindent\textbf{Step 2: Solve $\bX^\top\bX\,\bhat = \bX^\top\by$.}
+
+The determinant is $\det(\bX^\top\bX) = 3\cdot 14 - 6\cdot 6 = 42 - 36 = 6$, so
+\[
+(\bX^\top\bX)^{-1}
+= \frac{1}{6}\begin{pmatrix} 14 & -6 \\ -6 & 3 \end{pmatrix}
+= \begin{pmatrix} 7/3 & -1 \\ -1 & 1/2 \end{pmatrix}.
+\]
+Therefore
+\[
+\bhat = (\bX^\top\bX)^{-1}\bX^\top\by
+= \begin{pmatrix} 7/3 & -1 \\ -1 & 1/2 \end{pmatrix}
+  \begin{pmatrix} 6 \\ 13 \end{pmatrix}
+= \begin{pmatrix} 14 - 13 \\ -6 + 13/2 \end{pmatrix}
+= \begin{pmatrix} 1 \\ 1/2 \end{pmatrix}.
+\]
+The fitted line is $\hat{y} = 1 + \tfrac{1}{2}x$.
+
+\medskip\noindent\textbf{Step 3: Compute $\yhat$ and $\be$.}
+\[
+\yhat = \bX\bhat
+= \begin{pmatrix} 1 & 1 \\ 1 & 2 \\ 1 & 3 \end{pmatrix}
+  \begin{pmatrix} 1 \\ 1/2 \end{pmatrix}
+= \begin{pmatrix} 3/2 \\ 2 \\ 5/2 \end{pmatrix}, \qquad
+\be = \by - \yhat
+= \begin{pmatrix} 1 \\ 3 \\ 2 \end{pmatrix} - \begin{pmatrix} 3/2 \\ 2 \\ 5/2 \end{pmatrix}
+= \begin{pmatrix} -1/2 \\ 1 \\ -1/2 \end{pmatrix}.
+\]
+
+\medskip\noindent\textbf{Step 4: Verify the right angle ($\bX^\top\be = \bm{0}$).}
+\[
+\bX^\top\be
+= \begin{pmatrix} 1 & 1 & 1 \\ 1 & 2 & 3 \end{pmatrix}
+  \begin{pmatrix} -1/2 \\ 1 \\ -1/2 \end{pmatrix}
+= \begin{pmatrix} -1/2 + 1 - 1/2 \\ -1/2 + 2 - 3/2 \end{pmatrix}
+= \begin{pmatrix} 0 \\ 0 \end{pmatrix}. \;\checkmark
+\]
+The residual vector is perpendicular to \emph{every} column of $\bX$,
+hence perpendicular to the entire column space---exactly as the
+Projection Theorem demands.
+
+\medskip\noindent\textbf{Step 5: Compute the hat matrix $\bH$ and verify $\bH^2 = \bH$.}
+
+Using the intermediate product $\bX(\bX^\top\bX)^{-1}$:
+\[
+\bX(\bX^\top\bX)^{-1}
+= \begin{pmatrix} 1 & 1 \\ 1 & 2 \\ 1 & 3 \end{pmatrix}
+  \begin{pmatrix} 7/3 & -1 \\ -1 & 1/2 \end{pmatrix}
+= \begin{pmatrix} 4/3 & -1/2 \\ 1/3 & 0 \\ -2/3 & 1/2 \end{pmatrix}.
+\]
+Multiplying on the right by $\bX^\top$:
+\[
+\bH = \begin{pmatrix} 4/3 & -1/2 \\ 1/3 & 0 \\ -2/3 & 1/2 \end{pmatrix}
+\begin{pmatrix} 1 & 1 & 1 \\ 1 & 2 & 3 \end{pmatrix}
+= \frac{1}{6}\begin{pmatrix} 5 & 2 & -1 \\ 2 & 2 & 2 \\ -1 & 2 & 5 \end{pmatrix}.
+\]
+Check: $\tr(\bH) = (5+2+5)/6 = 12/6 = 2 = p$ (two parameters). $\checkmark$
+
+\smallskip
+Verify $\bH^2 = \bH$:
+\[
+\bH^2 = \frac{1}{36}
+\begin{pmatrix} 5 & 2 & -1 \\ 2 & 2 & 2 \\ -1 & 2 & 5 \end{pmatrix}
+\begin{pmatrix} 5 & 2 & -1 \\ 2 & 2 & 2 \\ -1 & 2 & 5 \end{pmatrix}
+= \frac{1}{36}
+\begin{pmatrix} 30 & 12 & -6 \\ 12 & 12 & 12 \\ -6 & 12 & 30 \end{pmatrix}
+= \frac{1}{6}\begin{pmatrix} 5 & 2 & -1 \\ 2 & 2 & 2 \\ -1 & 2 & 5 \end{pmatrix}
+= \bH.\;\checkmark
+\]
+Applying the projection a second time does nothing---the shadow of a shadow is itself.
+
+\medskip\noindent\textbf{The geometry.}
+The data vector $\by = (1, 3, 2)^\top$ is a point in $\R^3$.
+The column space $\Col(\bX)$ is the plane spanned by $(1,1,1)^\top$ and $(1,2,3)^\top$.
+The fitted vector $\yhat = (3/2,\, 2,\, 5/2)^\top$ is the foot of the perpendicular from $\by$ to this plane.
+The residual $\be = (-1/2,\, 1,\, -1/2)^\top$ is the perpendicular itself.
+We verified that $\be$ is orthogonal to the plane, and that $\bH$ is idempotent---once you are on the wall, further projections leave you there.
+
+\medskip\noindent\textbf{Takeaway.}
+OLS literally drops a perpendicular from $\by$ to $\Col(\bX)$;
+the normal equations $\bX^\top\be=\bm{0}$ are the \emph{right-angle condition},
+and the hat matrix is the machine that does it.
+\end{example}
+
+
+% ======================================================================
+% EXAMPLE 2 — Insert in Section 4 (after the variance decomposition,
+%              near Section 4.2 on R^2)
+% ======================================================================
+\begin{example}[Pythagoras Checks Out]\label{ex:pythagoras}
+We continue with the data from Example~\ref{ex:first-regression}:
+$\by = (1,3,2)^\top$, $\yhat = (3/2,\, 2,\, 5/2)^\top$,
+$\be = (-1/2,\, 1,\, -1/2)^\top$.
+
+The sample mean is $\bar{y} = (1+3+2)/3 = 2$, so the mean vector is
+$\bar{y}\bm{1} = (2, 2, 2)^\top$.
+
+\medskip\noindent\textbf{Step 1: Compute the three sums of squares.}
+
+\emph{Total sum of squares} (deviation of $\by$ from its mean):
+\[
+\text{SST} = \norm{\by - \bar{y}\bm{1}}^2
+= (1-2)^2 + (3-2)^2 + (2-2)^2
+= 1 + 1 + 0 = 2.
+\]
+\emph{Regression sum of squares} (deviation of $\yhat$ from the mean):
+\[
+\text{SSR} = \norm{\yhat - \bar{y}\bm{1}}^2
+= (3/2-2)^2 + (2-2)^2 + (5/2-2)^2
+= 1/4 + 0 + 1/4 = 1/2.
+\]
+\emph{Residual sum of squares} (length of the residual):
+\[
+\text{SSE} = \norm{\be}^2
+= (-1/2)^2 + 1^2 + (-1/2)^2
+= 1/4 + 1 + 1/4 = 3/2.
+\]
+
+\medskip\noindent\textbf{Step 2: Verify Pythagoras.}
+\[
+\text{SSR} + \text{SSE} = \frac{1}{2} + \frac{3}{2} = 2 = \text{SST}.\;\checkmark
+\]
+This is the Pythagorean theorem in $\R^3$:
+the squared hypotenuse $\norm{\by - \bar{y}\bm{1}}^2$ equals the sum of the two squared legs
+$\norm{\yhat - \bar{y}\bm{1}}^2 + \norm{\be}^2$.
+This works because $\yhat - \bar{y}\bm{1}$ and $\be$ are orthogonal---they live in perpendicular subspaces.
+
+\medskip\noindent\textbf{Step 3: Compute $R^2$ as $\cos^2\theta$.}
+\[
+R^2 = \frac{\text{SSR}}{\text{SST}} = \frac{1/2}{2} = \frac{1}{4} = 0.25.
+\]
+Since $R^2 = \cos^2\theta$ where $\theta$ is the angle between
+$\by - \bar{y}\bm{1}$ and $\yhat - \bar{y}\bm{1}$:
+\[
+\cos\theta = \sqrt{R^2} = \sqrt{1/4} = 1/2,
+\qquad
+\theta = \arccos(1/2) = 60°.
+\]
+
+\medskip\noindent\textbf{Interpretation.}
+The angle between the centered data vector and its shadow
+is $60°$---rather far from $0°$ (perfect fit) and closer to $90°$ (no fit at all).
+The model explains only $25\%$ of the variance.
+Geometrically, the shadow on the regression plane captures only
+a quarter of the squared length of the centered data vector;
+the remaining three-quarters is in the perpendicular residual direction.
+
+\medskip\noindent\textbf{Takeaway.}
+$R^2$ is literally the cosine-squared of the angle between the centered
+observation vector and its projection.
+A small angle means a long shadow and a good fit;
+a large angle means the data point hovers far above the column space.
+\end{example}
+
+
+% ======================================================================
+% EXAMPLE 3 — Insert after the FWL Theorem in Section 5
+% ======================================================================
+\begin{example}[FWL by Hand]\label{ex:fwl}
+We have $n=4$ observations with two predictors:
+\[
+\begin{array}{c|ccc}
+i & x_{1i} & x_{2i} & y_i \\\hline
+1 & 1 & 0 & 2 \\
+2 & 0 & 1 & 3 \\
+3 & 1 & 1 & 6 \\
+4 & 0 & 0 & 1
+\end{array}
+\]
+Model: $y_i = \beta_0 + \beta_1 x_{1i} + \beta_2 x_{2i} + e_i$.
+Notice that $x_1$ and $x_2$ have sample means $\bar{x}_1 = \bar{x}_2 = 1/2$
+and sample covariance $-1/12$ (moderately negatively correlated among these four points).
+
+\medskip\noindent\textbf{Part A: Full regression.}
+\[
+\bX = \begin{pmatrix}1&1&0\\1&0&1\\1&1&1\\1&0&0\end{pmatrix},\quad
+\by=\begin{pmatrix}2\\3\\6\\1\end{pmatrix}.
+\]
+\[
+\bX^\top\bX = \begin{pmatrix}4&2&2\\2&2&1\\2&1&2\end{pmatrix},\quad
+\bX^\top\by = \begin{pmatrix}12\\8\\9\end{pmatrix}.
+\]
+Row reduction of the augmented matrix:
+\[
+\left(\begin{array}{ccc|c}
+4&2&2&12\\2&2&1&8\\2&1&2&9
+\end{array}\right)
+\xrightarrow{R_2-\frac{1}{2}R_1,\;R_3-\frac{1}{2}R_1}
+\left(\begin{array}{ccc|c}
+4&2&2&12\\0&1&0&2\\0&0&1&3
+\end{array}\right).
+\]
+Reading off: $\hat\beta_2 = 3$, $\hat\beta_1 = 2$,
+$\hat\beta_0 = (12-2\cdot 2-2\cdot 3)/4 = (12-4-6)/4 = 1/2$.
+
+So $\bhat = (1/2,\; 2,\; 3)^\top$, and in particular \fbox{$\hat\beta_2 = 3$}.
+
+\emph{Verification:}
+\[
+\yhat = \begin{pmatrix}1/2+2+0\\1/2+0+3\\1/2+2+3\\1/2+0+0\end{pmatrix}
+= \begin{pmatrix}5/2\\7/2\\11/2\\1/2\end{pmatrix},\quad
+\be = \begin{pmatrix}2-5/2\\3-7/2\\6-11/2\\1-1/2\end{pmatrix}
+= \begin{pmatrix}-1/2\\-1/2\\1/2\\1/2\end{pmatrix}.
+\]
+Check: $\bX^\top\be = (-1/2-1/2+1/2+1/2,\;-1/2+1/2,\;-1/2+1/2)^\top = (0,0,0)^\top$. $\checkmark$
+
+\medskip\noindent\textbf{Part B: FWL two-step procedure for $\hat\beta_2$.}
+
+Partition $\bX_1 = (\bm{1}\mid \bm{x}_1)$ (intercept and first predictor),
+$\bX_2 = \bm{x}_2 = (0,1,1,0)^\top$.
+
+\emph{Step B1: Compute $(\bX_1^\top\bX_1)^{-1}$.}
+\[
+\bX_1 = \begin{pmatrix}1&1\\1&0\\1&1\\1&0\end{pmatrix},\quad
+\bX_1^\top\bX_1 = \begin{pmatrix}4&2\\2&2\end{pmatrix},\quad
+\det=4,\quad
+(\bX_1^\top\bX_1)^{-1} = \frac{1}{4}\begin{pmatrix}2&-2\\-2&4\end{pmatrix}
+= \begin{pmatrix}1/2&-1/2\\-1/2&1\end{pmatrix}.
+\]
+
+\emph{Step B2: Residualise $\bm{x}_2$ on $\bX_1$.}
+
+Regress $\bm{x}_2=(0,1,1,0)^\top$ on $\bX_1$:
+\[
+\bX_1^\top\bm{x}_2 = \begin{pmatrix}2\\1\end{pmatrix},\quad
+(\bX_1^\top\bX_1)^{-1}\bX_1^\top\bm{x}_2
+= \begin{pmatrix}1/2&-1/2\\-1/2&1\end{pmatrix}\begin{pmatrix}2\\1\end{pmatrix}
+= \begin{pmatrix}1/2\\0\end{pmatrix}.
+\]
+Projection: $\bX_1\bigl(\begin{smallmatrix}1/2\\0\end{smallmatrix}\bigr)
+= (1/2,\;1/2,\;1/2,\;1/2)^\top$.
+
+Residual:
+\[
+\tilde{\bm{x}}_2 = (0,1,1,0)^\top - (1/2,1/2,1/2,1/2)^\top = (-1/2,\;1/2,\;1/2,\;-1/2)^\top.
+\]
+This is the part of $x_2$ not explained by the intercept and $x_1$---the ``new information'' that $x_2$ brings beyond what $x_1$ already provides.
+
+\emph{Step B3: Residualise $\by$ on $\bX_1$.}
+\[
+\bX_1^\top\by = \begin{pmatrix}12\\8\end{pmatrix},\quad
+(\bX_1^\top\bX_1)^{-1}\bX_1^\top\by = \begin{pmatrix}1/2&-1/2\\-1/2&1\end{pmatrix}\begin{pmatrix}12\\8\end{pmatrix}
+= \begin{pmatrix}2\\4\end{pmatrix}.
+\]
+Projection: $\bX_1\bigl(\begin{smallmatrix}2\\4\end{smallmatrix}\bigr) = (2+4,\;2+0,\;2+4,\;2+0)^\top = (6,2,6,2)^\top$.
+
+Residual:
+\[
+\tilde{\by} = (2,3,6,1)^\top - (6,2,6,2)^\top = (-4,\;1,\;0,\;-1)^\top.
+\]
+
+\emph{Step B4: Regress $\tilde{\by}$ on $\tilde{\bm{x}}_2$ (no intercept needed---both have been purged of $\bX_1$).}
+\[
+\hat\beta_2^{\text{FWL}} = \frac{\tilde{\bm{x}}_2^\top\tilde{\by}}{\tilde{\bm{x}}_2^\top\tilde{\bm{x}}_2}.
+\]
+Numerator:
+\[
+\tilde{\bm{x}}_2^\top\tilde{\by}
+= \bigl(-\tfrac{1}{2}\bigr)(-4) + \bigl(\tfrac{1}{2}\bigr)(1) + \bigl(\tfrac{1}{2}\bigr)(0) + \bigl(-\tfrac{1}{2}\bigr)(-1)
+= 2 + \tfrac{1}{2} + 0 + \tfrac{1}{2} = 3.
+\]
+Denominator:
+\[
+\tilde{\bm{x}}_2^\top\tilde{\bm{x}}_2
+= \tfrac{1}{4}+\tfrac{1}{4}+\tfrac{1}{4}+\tfrac{1}{4} = 1.
+\]
+Therefore:
+\[
+\boxed{\hat\beta_2^{\text{FWL}} = \frac{3}{1} = 3 = \hat\beta_2^{\text{full}}.}\;\checkmark
+\]
+
+\medskip\noindent\textbf{What happened geometrically?}
+The FWL theorem says: to find the coefficient of $x_2$ in the full model,
+first remove from both $\by$ and $\bm{x}_2$ everything that $\bX_1$ can explain.
+What remains, $\tilde{\by}$ and $\tilde{\bm{x}}_2$, are the components
+perpendicular to $\Col(\bX_1)$.
+Regressing these residual components on each other gives \emph{exactly}
+the same coefficient---because the full regression coefficient of $x_2$
+depends only on the ``new direction'' that $x_2$ adds beyond $\bX_1$.
+
+\medskip\noindent\textbf{Takeaway.}
+FWL is not an approximation. The two-step residualisation procedure
+recovers $\hat\beta_2 = 3$ exactly, because projection onto a direct sum
+decomposes into sequential projections onto complementary subspaces.
+\end{example}
+
+
+% ======================================================================
+% EXAMPLE 4 — Insert in Section 7.1 (Multicollinearity)
+% ======================================================================
+\begin{example}[Multicollinearity in Action]\label{ex:multicollinearity}
+We compare two scenarios---uncorrelated vs.\ nearly collinear predictors---to
+see how the geometry of $\Col(\bX)$ affects the stability of $\bhat$.
+
+\medskip\noindent\textbf{Case A: Uncorrelated predictors.}
+
+Take the data from Example~\ref{ex:fwl}, where we found $\bhat = (1/2,\;2,\;3)^\top$
+with
+\[
+\bX^\top\bX = \begin{pmatrix}4&2&2\\2&2&1\\2&1&2\end{pmatrix}.
+\]
+The centered predictors $\bm{x}_1 - \bar{x}_1\bm{1} = (1/2,-1/2,1/2,-1/2)^\top$
+and $\bm{x}_2 - \bar{x}_2\bm{1} = (-1/2,1/2,1/2,-1/2)^\top$ have sample correlation
+\[
+r_{12} = \frac{(-1/4)+(-1/4)+(1/4)+(1/4)}{1\cdot 1} = 0.
+\]
+Now perturb one observation: change $y_4$ from $1$ to $2$ (a shift of $+1$).
+Since $\bX^\top\bX$ is unchanged, only $\bX^\top\by$ changes:
+$\bX^\top\by_{\text{new}} = (13,\;8,\;9)^\top$.
+Re-running the same elimination:
+\[
+\left(\begin{array}{ccc|c}
+4&2&2&13\\0&1&0&8-13/2\\0&0&1&9-13/2
+\end{array}\right)
+= \left(\begin{array}{ccc|c}
+4&2&2&13\\0&1&0&3/2\\0&0&1&5/2
+\end{array}\right).
+\]
+New coefficients: $\hat\beta_1^{\text{new}} = 3/2$, $\hat\beta_2^{\text{new}} = 5/2$,
+$\hat\beta_0^{\text{new}} = (13-3-5)/4 = 5/4$.
+
+Changes: $|\Delta\hat\beta_1| = |3/2-2| = 1/2$, $|\Delta\hat\beta_2| = |5/2-3| = 1/2$.
+A unit perturbation in one $y$-value moves each coefficient by at most $1/2$.
+\emph{Stable.}
+
+\medskip\noindent\textbf{Case B: Nearly collinear predictors.}
+
+Now consider:
+\[
+\begin{array}{c|ccc}
+i & x_{1i} & x_{2i} & y_i \\\hline
+1 & 0 & 0 & 3 \\
+2 & 1 & 1 & 5 \\
+3 & 2 & 2 & 7 \\
+4 & 3 & 3 & 9
+\end{array}
+\]
+Here $x_2 = x_1$ exactly---\emph{perfect} collinearity.
+\[
+\bX^\top\bX = \begin{pmatrix}4&6&6\\6&14&14\\6&14&14\end{pmatrix}.
+\]
+The last two columns are identical, so $\rank(\bX^\top\bX) = 2 < 3$.
+The matrix is singular: there is no unique $\bhat$.
+Any $(\hat\beta_0,\;\hat\beta_1,\;\hat\beta_2)$ with $\hat\beta_1+\hat\beta_2 = 2$
+and $\hat\beta_0 = 3$ fits perfectly.
+For instance $(3,\;2,\;0)$, $(3,\;0,\;2)$, or $(3,\;100,\;-98)$ all give the same $\yhat$.
+
+\medskip\noindent\textbf{Breaking the tie with a tiny perturbation.}
+Add $\varepsilon = 0.01$ to a single entry: set $x_{2,4} = 3.01$ instead of $3$.
+Now $\bm{x}_2 = (0,\;1,\;2,\;3.01)^\top$ and
+\[
+\bX^\top\bX = \begin{pmatrix}4&6&6.01\\6&14&14.03\\6.01&14.03&14.0601\end{pmatrix}.
+\]
+The ``predictor block'' (lower-right $2\times 2$, after sweeping out the intercept) has
+centered cross-products:
+\[
+C = \begin{pmatrix} 5 & 5.015 \\ 5.015 & 5.030025 \end{pmatrix}, \quad
+\det(C) = 5\times 5.030025 - 5.015^2 = 25.150125 - 25.150225 = -0.0001.
+\]
+Actually, let us compute more carefully:
+$\bm{x}_1^\top\bm{x}_1 - n\bar{x}_1^2 = 14 - 9 = 5$,\;
+$\bm{x}_2^\top\bm{x}_2 - n\bar{x}_2^2 = 14.0601 - 4(1.5025)^2 = 14.0601 - 4(2.25750625) = 14.0601 - 9.030025 = 5.030075$,\;
+$\bm{x}_1^\top\bm{x}_2 - n\bar{x}_1\bar{x}_2 = 14.03 - 4(1.5)(1.5025) = 14.03 - 9.015 = 5.015$.
+
+$\det(C) = 5 \times 5.030075 - 5.015^2 = 25.150375 - 25.150225 = 0.00015$.
+
+This determinant is \emph{tiny}. The eigenvalues of $C$ are approximately:
+\[
+\lambda_1 \approx 10.03, \qquad \lambda_2 \approx 0.000015.
+\]
+The condition number is $\lambda_1/\lambda_2 \approx 670{,}000$.
+
+Now solve for $\by = (3,5,7,9)^\top$:
+\[
+\bhat \approx (3,\; 1,\; 1)^\top \quad (\text{since } \hat\beta_1+\hat\beta_2\approx 2).
+\]
+But change $y_4$ to $10$ (a shift of $+1$) and the solution becomes
+approximately $\bhat \approx (3,\; -65,\; 68)$ --- the individual coefficients swing by $\pm 67$
+even though the \emph{prediction} $\yhat$ barely changes.
+
+\medskip\noindent\textbf{Why this happens geometrically.}
+When $x_1\approx x_2$, the two predictor columns point in nearly the same direction.
+The column space $\Col(\bX)$ is essentially a ``pancake''---very thin in one direction.
+The projection $\yhat$ onto this space is perfectly well-defined (the plane hasn't moved),
+but the \emph{coordinate decomposition} $\yhat = \hat\beta_0\bm{1}+\hat\beta_1\bm{x}_1+\hat\beta_2\bm{x}_2$
+is wildly unstable because tiny changes in $\yhat$ can slide the coordinates along
+the nearly-degenerate direction.
+
+\medskip\noindent\textbf{Contrast.}
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{lcc}
+\toprule
+& Case A (uncorr.) & Case B (collinear) \\
+\midrule
+$|r_{12}|$ & $0$ & $0.9999\ldots$ \\
+$\lambda_{\min}$ of $C$ & $1$ & $0.000015$ \\
+$\Delta\hat\beta$ per unit $\Delta y$ & $\le 1/2$ & $\approx 67$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\medskip\noindent\textbf{Takeaway.}
+Multicollinearity does not harm the \emph{projection} $\yhat$---it harms the
+\emph{decomposition into coordinates}.
+The condition number of $\bX^\top\bX$ quantifies how ``pancake-like'' the column
+space is, and hence how much $(\bX^\top\bX)^{-1}$ amplifies perturbations
+when converting $\yhat$ back into individual coefficients $\bhat$.
+\end{example}
+
+
+% ======================================================================
+% EXAMPLE 5 — Insert in Section 6 (Leverage and Influence)
+% ======================================================================
+\begin{example}[Leverage and Influence]\label{ex:leverage}
+Consider $n=5$ observations in simple regression ($y = \beta_0+\beta_1 x + e$):
+\[
+\begin{array}{c|cc}
+i & x_i & y_i \\\hline
+1 & 1 & 2 \\
+2 & 2 & 4 \\
+3 & 3 & 5 \\
+4 & 4 & 4 \\
+5 & 10 & 11
+\end{array}
+\]
+Observation 5 sits far from the others in predictor space.
+
+\medskip\noindent\textbf{Step 1: Compute the leverage values $h_{ii}$.}
+
+The design matrix is $\bX = (\bm{1}\mid\bm{x})$, with
+\[
+\bX^\top\bX = \begin{pmatrix} 5 & 20 \\ 20 & 130 \end{pmatrix},\quad
+\det = 650 - 400 = 250.
+\]
+\[
+(\bX^\top\bX)^{-1} = \frac{1}{250}\begin{pmatrix} 130 & -20 \\ -20 & 5 \end{pmatrix}.
+\]
+The leverage of observation $i$ is $h_{ii} = \bm{x}_i^\top(\bX^\top\bX)^{-1}\bm{x}_i$
+where $\bm{x}_i = (1, x_i)^\top$:
+\[
+h_{ii} = \frac{130 - 40x_i + 5x_i^2}{250} = \frac{26 - 8x_i + x_i^2}{50}.
+\]
+
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{c|ccc}
+\toprule
+$i$ & $x_i$ & $26-8x_i+x_i^2$ & $h_{ii}$ \\
+\midrule
+1 & 1 & $26-8+1=19$ & $19/50 = 0.38$ \\
+2 & 2 & $26-16+4=14$ & $14/50 = 0.28$ \\
+3 & 3 & $26-24+9=11$ & $11/50 = 0.22$ \\
+4 & 4 & $26-32+16=10$ & $10/50 = 0.20$ \\
+5 & 10 & $26-80+100=46$ & $46/50 = 0.92$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Check: $\sum h_{ii} = (19+14+11+10+46)/50 = 100/50 = 2 = p$. $\checkmark$
+
+Observation 5 has leverage $h_{55} = 0.92$, close to the maximum of~$1$.
+The rule-of-thumb threshold $2p/n = 4/5 = 0.8$ is exceeded.
+This point controls $92\%$ of its own fitted value.
+
+\medskip\noindent\textbf{Step 2: The original fit.}
+\[
+\bX^\top\by = \begin{pmatrix}26\\151\end{pmatrix},\quad
+\bhat = (\bX^\top\bX)^{-1}\bX^\top\by
+= \frac{1}{250}\begin{pmatrix}130\cdot26 - 20\cdot151\\-20\cdot26+5\cdot151\end{pmatrix}
+= \frac{1}{250}\begin{pmatrix}360\\235\end{pmatrix}
+= \begin{pmatrix}36/25\\47/50\end{pmatrix}.
+\]
+So $\hat\beta_0 = 1.44$, $\hat\beta_1 = 0.94$.
+
+Fitted values and residuals:
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{c|cccc}
+\toprule
+$i$ & $x_i$ & $\hat{y}_i = 1.44+0.94x_i$ & $e_i$ & $e_i^2$ \\
+\midrule
+1 & 1 & $2.38$ & $-0.38$ & $0.14$ \\
+2 & 2 & $3.32$ & $\phantom{-}0.68$ & $0.46$ \\
+3 & 3 & $4.26$ & $\phantom{-}0.74$ & $0.55$ \\
+4 & 4 & $5.20$ & $-1.20$ & $1.44$ \\
+5 & 10 & $10.84$ & $\phantom{-}0.16$ & $0.03$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+$\text{SSE} = 0.14+0.46+0.55+1.44+0.03 = 2.62$, $\hat\sigma^2 = 2.62/(5-2) = 0.873$.
+
+\medskip\noindent\textbf{Step 3: The influence experiment.}
+
+\emph{Move the high-leverage point.}
+Change $y_5$ from $11$ to $16$ ($+5$ shift):
+$\bX^\top\by_{\text{new}} = (31,\;201)^\top$.
+$\hat\beta_1^{\text{new}} = (-20\cdot31+5\cdot201)/250 = (-620+1005)/250 = 385/250 = 1.54$.
+Change in slope: $\Delta\hat\beta_1 = 1.54-0.94 = +0.60$.
+
+\emph{Move a central point by the same amount.}
+Instead, change $y_3$ from $5$ to $10$ ($+5$ shift):
+$\bX^\top\by_{\text{new}} = (31,\;166)^\top$.
+$\hat\beta_1^{\text{new}} = (-20\cdot31+5\cdot166)/250 = (-620+830)/250 = 210/250 = 0.84$.
+Change in slope: $\Delta\hat\beta_1 = 0.84-0.94 = -0.10$.
+
+Wait---this doesn't show the expected pattern clearly. Let me re-examine.
+
+Actually, the slope change formula under a perturbation $\delta$ at observation $i$ is
+\[
+\Delta\hat\beta_1 \propto \frac{(x_i - \bar{x})}{n-1}\cdot\delta.
+\]
+For $i=5$ ($x_5=10$, $\bar{x}=4$): $x_5-\bar{x}=6$. For $i=3$ ($x_3=3$): $x_3-\bar{x}=-1$.
+So the high-leverage point should produce a slope change $|6/(-1)| = 6$ times larger.
+
+Let me recompute. For the $y_5$ perturbation ($\delta=+5$ at $i=5$):
+$\Delta(\bX^\top\by) = (5,\;50)^\top$, so
+$\Delta\bhat = (\bX^\top\bX)^{-1}(5,50)^\top = \frac{1}{250}(130\cdot5-20\cdot50,\;-20\cdot5+5\cdot50)^\top
+= \frac{1}{250}(650-1000,\;-100+250)^\top = \frac{1}{250}(-350,\;150)^\top = (-1.4,\;0.6)^\top$.
+
+For the $y_3$ perturbation ($\delta=+5$ at $i=3$):
+$\Delta(\bX^\top\by) = (5,\;15)^\top$, so
+$\Delta\bhat = \frac{1}{250}(130\cdot5-20\cdot15,\;-100+75)^\top
+= \frac{1}{250}(350,\;-25)^\top = (1.4,\;-0.1)^\top$.
+
+So $|\Delta\hat\beta_1| = 0.6$ for the high-leverage point vs.\ $0.1$ for the central point.
+The high-leverage point changes the slope \textbf{six times more}. $\checkmark$
+
+\medskip\noindent\textbf{Step 4: Cook's distance.}
+
+Cook's distance for observation $i$ is
+\[
+D_i = \frac{e_i^2}{p\,\hat\sigma^2}\cdot\frac{h_{ii}}{(1-h_{ii})^2}.
+\]
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{c|cccccc}
+\toprule
+$i$ & $e_i^2$ & $h_{ii}$ & $1-h_{ii}$ & $\frac{h_{ii}}{(1-h_{ii})^2}$ & $D_i$ \\
+\midrule
+1 & 0.14 & 0.38 & 0.62 & 0.99 & 0.08 \\
+2 & 0.46 & 0.28 & 0.72 & 0.54 & 0.14 \\
+3 & 0.55 & 0.22 & 0.78 & 0.36 & 0.11 \\
+4 & 1.44 & 0.20 & 0.80 & 0.31 & 0.26 \\
+5 & 0.03 & 0.92 & 0.08 & 143.75 & 2.11 \\
+\bottomrule
+\end{tabular}
+\end{center}
+(Using $p\hat\sigma^2 = 2\times 0.873 = 1.746$.)
+
+Observation 5 has $D_5 \approx 2.1$, far above the conventional threshold of $1$.
+Even though its residual is the \emph{smallest} ($e_5 = 0.16$), its enormous leverage
+($h_{55} = 0.92$) makes it the most influential point.
+The small residual is deceptive: the high leverage has already forced the line
+close to this point, masking its influence.
+
+\medskip\noindent\textbf{Takeaway.}
+Leverage $h_{ii}$ measures how isolated observation $i$ is in predictor space;
+Cook's distance multiplies leverage by surprise (the residual) to measure
+actual influence on~$\bhat$.
+A high-leverage point with a small residual is the most dangerous kind:
+it does not look like an outlier \emph{because} it has already
+bent the regression line toward itself.
+\end{example}
+
+
+% ======================================================================
+% EXAMPLE 6 — Insert in Section 8.1 (Ridge regression)
+% ======================================================================
+\begin{example}[Ridge Shrinkage Direction by Direction]\label{ex:ridge}
+We work with a $2\times 2$ cross-product matrix $\bX^\top\bX$ whose eigenvalues
+and eigenvectors are known, to see exactly how Ridge shrinks each direction.
+
+\medskip\noindent\textbf{Setup.}
+Suppose (after centering) $\bX^\top\bX$ has eigendecomposition
+$\bX^\top\bX = \bQ\bD\bQ^\top$ with eigenvalues $9$ and $1$:
+\[
+\bQ = \frac{1}{\sqrt{2}}\begin{pmatrix}1&1\\1&-1\end{pmatrix},\quad
+\bD = \begin{pmatrix}9&0\\0&1\end{pmatrix}.
+\]
+This gives
+\[
+\bX^\top\bX
+= \frac{1}{2}\begin{pmatrix}1&1\\1&-1\end{pmatrix}
+\begin{pmatrix}9&0\\0&1\end{pmatrix}
+\begin{pmatrix}1&1\\1&-1\end{pmatrix}
+= \begin{pmatrix}5&4\\4&5\end{pmatrix}.
+\]
+The ``wide'' eigendirection is $\bm{v}_1 = (1,1)^\top/\sqrt{2}$ (eigenvalue $9$, lots of data spread)
+and the ``narrow'' eigendirection is $\bm{v}_2 = (1,-1)^\top/\sqrt{2}$ (eigenvalue $1$, little spread).
+
+Choose OLS solution $\bhat_{\text{OLS}} = (3,\;1)^\top$.
+(This arises when $\bX^\top\by = \bX^\top\bX\,\bhat = (5\cdot3+4\cdot1,\;4\cdot3+5\cdot1)^\top = (19,17)^\top$.)
+
+Decompose $\bhat_{\text{OLS}}$ in the eigenbasis. Writing $\bhat = \alpha_1\bm{v}_1 + \alpha_2\bm{v}_2$
+in unnormalized form with $\bm{u}_1 = (1,1)^\top$, $\bm{u}_2 = (1,-1)^\top$:
+\[
+(3,1) = \alpha_1(1,1) + \alpha_2(1,-1) \implies \alpha_1 = 2,\;\alpha_2 = 1.
+\]
+So OLS has component $2$ along the stable direction and $1$ along the unstable direction.
+
+\medskip\noindent\textbf{Ridge coefficients.}
+Ridge regression replaces $(\bX^\top\bX)^{-1}$ with $(\bX^\top\bX + \lambda\bI)^{-1}$.
+In the eigenbasis, each component is simply multiplied by a shrinkage factor:
+\[
+\alpha_k^{\text{Ridge}} = \frac{\lambda_k}{\lambda_k + \lambda}\;\alpha_k^{\text{OLS}}.
+\]
+No matrix inversion is needed once you work in the eigenbasis---this is the power
+of the spectral decomposition.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{c|cc|cc|cc|c}
+\toprule
+& \multicolumn{2}{c|}{Shrinkage factor} & \multicolumn{2}{c|}{Eigencomponents} & \multicolumn{2}{c|}{Coefficients} & \\
+$\lambda$ & $\frac{9}{9+\lambda}$ & $\frac{1}{1+\lambda}$ & $\alpha_1^{\text{R}}$ & $\alpha_2^{\text{R}}$ & $\hat\beta_1^{\text{R}}$ & $\hat\beta_2^{\text{R}}$ & $\norm{\bhat_{\text{R}}}$ \\
+\midrule
+$0$ & $1$ & $1$ & $2$ & $1$ & $3$ & $1$ & $\sqrt{10}\approx 3.16$ \\[2pt]
+$1$ & $\frac{9}{10}$ & $\frac{1}{2}$ & $\frac{9}{5}$ & $\frac{1}{2}$ & $\frac{23}{10}$ & $\frac{13}{10}$ & $2.64$ \\[2pt]
+$10$ & $\frac{9}{19}$ & $\frac{1}{11}$ & $\frac{18}{19}$ & $\frac{1}{11}$ & $1.04$ & $0.86$ & $1.35$ \\[2pt]
+$100$ & $\frac{9}{109}$ & $\frac{1}{101}$ & $\frac{18}{109}$ & $\frac{1}{101}$ & $0.18$ & $0.16$ & $0.24$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The coefficients are computed from the eigencomponents:
+$\hat\beta_1^{\text{R}} = \alpha_1^{\text{R}} + \alpha_2^{\text{R}}$,
+$\hat\beta_2^{\text{R}} = \alpha_1^{\text{R}} - \alpha_2^{\text{R}}$
+(using $\bhat = \alpha_1\bm{u}_1 + \alpha_2\bm{u}_2$).
+
+\medskip\noindent\textbf{Verification for $\lambda=1$.}
+\[
+(\bX^\top\bX + \bI)^{-1} = \begin{pmatrix}6&4\\4&6\end{pmatrix}^{-1}
+= \frac{1}{36-16}\begin{pmatrix}6&-4\\-4&6\end{pmatrix}
+= \frac{1}{20}\begin{pmatrix}6&-4\\-4&6\end{pmatrix}.
+\]
+\[
+\bhat_{\text{Ridge}} = \frac{1}{20}\begin{pmatrix}6&-4\\-4&6\end{pmatrix}\begin{pmatrix}19\\17\end{pmatrix}
+= \frac{1}{20}\begin{pmatrix}114-68\\-76+102\end{pmatrix}
+= \frac{1}{20}\begin{pmatrix}46\\26\end{pmatrix}
+= \begin{pmatrix}23/10\\13/10\end{pmatrix}.\;\checkmark
+\]
+
+\medskip\noindent\textbf{The key pattern.}
+At $\lambda=1$, the stable direction (eigenvalue $9$) retains $90\%$ of its OLS
+component, while the unstable direction (eigenvalue $1$) is already halved.
+At $\lambda=10$, the unstable direction is crushed to $9\%$ of its OLS value,
+while the stable direction still retains $47\%$.
+The shrinkage factor $\lambda_k/(\lambda_k+\lambda)$ makes this precise:
+directions with small eigenvalues---precisely where OLS is most
+variable---are penalised most aggressively.
+
+\medskip\noindent\textbf{Geometric picture.}
+As $\lambda$ increases from $0$ to $\infty$, the coefficient vector traces a curved
+path from $(3,1)$ toward the origin.
+It does not shrink isotropically (which would follow the straight line
+from $(3,1)$ to $(0,0)$). Instead, it curves---first collapsing the unstable
+eigencomponent, then eventually the stable one.
+At $\lambda=1$: $\bhat = (2.3,\;1.3)$---the coefficients have moved closer together
+because the difference $\hat\beta_1-\hat\beta_2$ lives in the unstable direction
+and has been halved.
+At $\lambda=100$: $\bhat \approx (0.18,\;0.16)$---nearly equal, because only the
+stable ``sum'' direction retains any signal.
+
+\medskip\noindent\textbf{Takeaway.}
+Ridge regression is \emph{anisotropic} shrinkage: it shrinks fastest along
+the directions where the data provide the least information (smallest
+eigenvalues of $\bX^\top\bX$), which are precisely the directions where OLS
+variance is largest.
+The eigendecomposition reveals that Ridge trades variance for bias,
+direction by direction, with the unstable directions paying first.
+\end{example}

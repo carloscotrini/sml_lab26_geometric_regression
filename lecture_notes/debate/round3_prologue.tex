@@ -1,0 +1,154 @@
+%======================================================================
+\section{Prologue: One Theorem, Ten Perspectives}
+%======================================================================
+
+\subsection*{New Year's Night, 1802}
+
+On the first day of the nineteenth century, the astronomer Giuseppe Piazzi
+spotted something that should not have been there: a faint, slow-moving
+point of light in the constellation Taurus.  Night after night he tracked
+it, recording its position against the fixed stars.  He had discovered
+Ceres---the first asteroid, and the largest object between Mars and
+Jupiter.
+
+Then disaster struck.  After only 41 nights of observation, Ceres
+drifted too close to the Sun and vanished in the glare.
+Piazzi had captured barely three percent of the asteroid's orbit.  As the
+months passed, the astronomical community faced a crisis: by the
+time Ceres emerged from behind the Sun, it could be \emph{anywhere} along
+a vast arc of sky.  Several astronomers tried to predict its return,
+assuming a circular orbit; their predictions would miss by more than ten
+degrees.  The needle had disappeared into a haystack of stars.
+
+A 24-year-old mathematician in Brunswick named Carl Friedrich Gauss
+took a different approach.
+
+Gauss took Piazzi's 41 data points---each one contaminated by
+atmospheric distortion, instrument imprecision, and the tremor of a
+human hand---and asked a question that would reshape the mathematics of
+uncertainty: \emph{Of all the elliptical orbits that the laws of physics
+permit, which one passes closest to these noisy observations?}
+
+His method was, at its core, simple.  He wrote down the
+equations of a Keplerian ellipse, parameterised by six orbital elements.
+These equations carved out a surface---a subspace of possible
+trajectories---inside the much larger space of all conceivable sequences
+of celestial positions.  Piazzi's 41 observations lived somewhere in that
+larger space, displaced from the true orbit by the accumulated noise of
+every measurement.  Gauss sought the single point on the orbital surface
+that lay \emph{nearest} to the data.
+
+He found it by dropping a perpendicular.
+
+The computation was ferocious: weeks of hand calculation, pages of
+logarithm tables, corrections for the Sun's gravitational tug.  But the
+geometric principle was clear.  The best-fitting orbit was the
+\textbf{shadow} of the noisy data cast onto the subspace of physically
+possible trajectories---the point where a perpendicular from the data
+meets the surface.  The residual---the gap between data and
+prediction---stood at a right angle to every direction the orbit could
+vary.  Gauss kept his method private; only years later would it become
+known as the \emph{method of least squares}.
+
+Gauss sent his prediction to the astronomer Franz Xaver von Zach.  On
+December~31, 1801---New Year's Eve---von~Zach aimed his telescope at the
+patch of sky Gauss had specified.  There, within half a degree of the
+predicted position, was Ceres.
+
+It was one of the greatest predictions in the history of science.
+And it was, at its mathematical heart, an orthogonal projection.
+
+\bigskip
+
+\subsection*{From the stars to the spreadsheet}
+
+Two centuries later, the same geometry appears every time you fit a
+model to data.  The setting is humbler---you might be predicting house
+prices instead of asteroid trajectories---but the underlying act is
+identical.  Your data vector $\by\in\R^n$ lives in a high-dimensional
+space.  The column space of your design matrix $\Col(\bX)$ is a subspace
+of possible fitted values, one for each choice of coefficients.  The
+ordinary least squares fit $\yhat$ is the point in $\Col(\bX)$ closest
+to $\by$.  The residual $\be = \by - \yhat$ is perpendicular to the
+column space.
+
+Gauss projected noisy observations onto the subspace of Keplerian
+ellipses.  You project noisy responses onto the subspace spanned by
+your regressors.  The theorem that makes both possible is the same.
+
+\begin{metaphor}
+Imagine a flashlight shining straight down onto a table.
+The \textbf{object} is the data vector $\by\in\R^n$, hovering above.
+The \textbf{table} is the column space $\Col(\bX)$.
+The \textbf{shadow} on the table is the fitted vector $\yhat$.
+The \textbf{gap} between object and shadow is the residual $\be$.
+The shadow falls directly below---the residual is
+perpendicular to the table.
+\end{metaphor}
+
+This single image---a shadow cast at right angles---generates everything
+in these notes.
+
+\begin{theorem}[The Projection Theorem---finite-dimensional case]%
+  \label{thm:projection}
+Let $S$ be a subspace of $\R^n$, and let $\by\in \R^n$.  There exists
+a unique $\yhat\in S$ such that
+\[
+  \norm{\by - \yhat} \;\le\; \norm{\by - \bm{s}}
+  \qquad\text{for all } \bm{s}\in S.
+\]
+Moreover, $\yhat$ is characterised by the \emph{orthogonality condition}
+\[
+  (\by - \yhat) \perp S,
+\]
+i.e.\ $\ip{\by - \yhat}{\bm{s}} = 0$ for every $\bm{s}\in S$.
+\end{theorem}
+
+Ordinary least squares is the Projection Theorem applied to
+$S = \Col(\bX)$.
+That one sentence is the seed from which the rest of these notes grow.
+
+\subsection*{Roadmap}
+
+Every section that follows answers a question that the Projection
+Theorem makes natural:
+
+\begin{enumerate}[leftmargin=2em]
+  \item \textbf{Where do the coefficients come from?}
+    The OLS coefficients $\bbetahat$ are the \emph{coordinates} of the
+    shadow in the basis provided by the columns of $\bX$.
+    (\S\ref{sec:coefficients})
+
+  \item \textbf{How good is the fit?}
+    The Pythagorean theorem decomposes total variance into explained
+    and unexplained parts, and $R^2$ turns out to equal the squared
+    cosine of the angle between $\by$ and $\yhat$.
+    (\S\ref{sec:pythagoras})
+
+  \item \textbf{What does each variable contribute on its own?}
+    The Frisch--Waugh--Lovell theorem shows that the coefficient on any
+    single regressor comes from projecting away all the others
+    first---a geometric ``peeling apart'' of contributions.
+    (\S\ref{sec:fwl})
+
+  \item \textbf{What can go wrong, and how do we fix it?}
+    Multicollinearity collapses the subspace toward a thin sliver,
+    making the shadow unstable; omitted variables tilt the subspace
+    itself.  Leverage and influence measure which data points move the
+    shadow most.  Ridge and LASSO regularisation deliberately shrink the
+    shadow, trading a little bias for a lot less variance.
+    (\S\ref{sec:leverage}--\S\ref{sec:regularisation})
+
+  \item \textbf{How do we test whether the shadow is real?}
+    The $F$-test compares the length of two shadows---one cast onto the
+    full column space, the other onto a restricted subspace---and asks
+    whether the difference is too large to be noise.
+    (\S\ref{sec:ftest})
+\end{enumerate}
+
+\noindent
+By the time you reach the end, you will see that Gauss's prediction of
+Ceres, the $R^2$ on your next problem set, and the $p$-value in a
+clinical trial are all manifestations of the same geometric act:
+dropping a perpendicular onto a subspace, and measuring the gap that
+remains.

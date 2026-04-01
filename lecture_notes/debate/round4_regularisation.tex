@@ -1,0 +1,378 @@
+%======================================================================
+\section{Constraining the Shadow: Regularisation}\label{sec:regularisation}
+%======================================================================
+
+Until now, every result has been a consequence of orthogonal projection.
+The hat matrix $\bH$ is idempotent and symmetric; the fitted values
+$\yhat$ are the closest point in $\Col(\bX)$ to $\by$; the residual
+$\be$ meets the column space at a right angle.
+Regularisation breaks this pattern---Ridge and LASSO are \emph{not}
+projections.
+They deliberately sacrifice the ``closest point'' property to gain
+stability.
+This section explains how and why.
+
+\begin{warning}
+\textbf{Where the projection framework reaches its limits.}
+The Ridge hat matrix
+$\bH_{\text{ridge}} = \bX(\bX^\top\bX+\lambda\bI)^{-1}\bX^\top$
+is \emph{not} idempotent
+($\bH_{\text{ridge}}^2 \neq \bH_{\text{ridge}}$) and is \emph{not}
+an orthogonal projection onto any subspace.
+It does not ``drop a perpendicular''---it \emph{pulls the shadow
+inward}, toward the origin, away from the foot of the perpendicular.
+
+The LASSO solution is not even linear in $\by$.
+
+The geometric language of shadows and right angles served us well for
+OLS\@.  For regularisation, we need a different picture: that of
+\textbf{constrained optimisation}, where the solution is determined
+not by orthogonality but by the tangency between an objective function's
+level sets and a constraint region.
+\end{warning}
+
+\medskip
+\noindent\textbf{The telescope analogy.}
+Think of the OLS estimate as looking through a telescope on a windy night.
+The telescope points in the right direction on average (unbiasedness),
+but the wind makes it shake violently (high variance from
+multicollinearity or small sample size).
+Each snapshot is centred on the truth, but individual frames are blurry
+and useless.
+
+Regularisation is like tightening the telescope's mount.
+A tighter mount introduces a small systematic error---the telescope
+now points slightly away from the true target (bias).
+But the shaking is dramatically reduced (lower variance), so each
+individual frame is much sharper and more useful.
+
+Ridge tightens the mount uniformly in all directions.
+LASSO tightens some axes completely (locking them to zero) while
+leaving others free---it is like a mount that can only swivel along
+certain axes, automatically selecting which directions matter.
+
+The bias-variance trade-off is the trade-off between pointing accuracy
+and shake reduction.
+The optimal penalty $\lambda$ is the tightness that minimises the
+total blur (mean squared error $= \text{bias}^2 + \text{variance}$).
+
+
+%----------------------------------------------------------------------
+\subsection{Ridge regression}
+%----------------------------------------------------------------------
+
+\begin{definition}
+The \textbf{Ridge estimator} with penalty $\lambda\ge 0$ is
+\[
+  \bhat_{\text{ridge}}
+  = \argmin_{\bm{\beta}}\left\{
+      \norm{\by-\bX\bm{\beta}}^2 + \lambda\norm{\bm{\beta}}^2
+    \right\}
+  = (\bX^\top\bX + \lambda\bI)^{-1}\bX^\top\by.
+\]
+\end{definition}
+
+\noindent\textbf{Eigenvalue shrinkage---the key mechanism.}
+Ridge adds $\lambda\bI$ to $\bX^\top\bX$, which shifts every eigenvalue
+$\lambda_k\mapsto\lambda_k+\lambda$.
+Write the eigendecomposition $\bX^\top\bX = \bQ\bD\bQ^\top$, where
+$\bD = \diag(\lambda_1,\dots,\lambda_p)$.
+Then
+\begin{equation}\label{eq:ridge-eigen}
+  \bhat_{\text{ridge}}
+  = \bQ\,\diag\!\left(\frac{\lambda_k}{\lambda_k+\lambda}\right)\bQ^\top
+    \bhat_{\text{OLS}}.
+\end{equation}
+Each eigenvector component of $\bhat_{\text{OLS}}$ is multiplied by the
+shrinkage factor $\lambda_k/(\lambda_k+\lambda)$, which lies in $[0,1]$.
+\begin{itemize}[nosep]
+  \item Directions with \emph{large} $\lambda_k$ (stable, well-determined
+        by the data) are barely affected: the factor is close to $1$.
+  \item Directions with \emph{small} $\lambda_k$ (unstable, dominated by
+        noise) are aggressively shrunk toward zero: the factor is close
+        to $0$.
+\end{itemize}
+
+\begin{keyinsight}
+Ridge performs \emph{selective geometric surgery}: it identifies the
+unstable directions of the column space via the eigenvalue spectrum
+and shrinks those directions most aggressively, while leaving the
+stable directions nearly intact.
+This is \emph{anisotropic} shrinkage---it does not pull equally in
+all directions, but preferentially collapses the dimensions where OLS
+is least trustworthy.
+\end{keyinsight}
+
+
+%--- Example 6: Ridge shrinkage direction by direction -----------------
+
+\begin{example}[Ridge Shrinkage Direction by Direction]\label{ex:ridge}
+We work with a $2\times 2$ cross-product matrix $\bX^\top\bX$ whose
+eigenvalues and eigenvectors are known, to see exactly how Ridge shrinks
+each direction.
+
+\medskip\noindent\textbf{Setup.}
+Suppose (after centring) $\bX^\top\bX$ has eigendecomposition
+$\bX^\top\bX = \bQ\bD\bQ^\top$ with eigenvalues $9$ and $1$:
+\[
+\bQ = \frac{1}{\sqrt{2}}\begin{pmatrix}1&1\\1&-1\end{pmatrix},\quad
+\bD = \begin{pmatrix}9&0\\0&1\end{pmatrix}.
+\]
+This gives
+\[
+\bX^\top\bX
+= \frac{1}{2}\begin{pmatrix}1&1\\1&-1\end{pmatrix}
+\begin{pmatrix}9&0\\0&1\end{pmatrix}
+\begin{pmatrix}1&1\\1&-1\end{pmatrix}
+= \begin{pmatrix}5&4\\4&5\end{pmatrix}.
+\]
+The ``wide'' eigendirection is
+$\bm{v}_1 = (1,1)^\top/\sqrt{2}$ (eigenvalue $9$, lots of data spread)
+and the ``narrow'' eigendirection is
+$\bm{v}_2 = (1,-1)^\top/\sqrt{2}$ (eigenvalue $1$, little spread).
+
+Choose OLS solution $\bhat_{\text{OLS}} = (3,\;1)^\top$.
+Decompose in the eigenbasis using unnormalised directions
+$\bm{u}_1 = (1,1)^\top$, $\bm{u}_2 = (1,-1)^\top$:
+\[
+(3,1) = \alpha_1(1,1) + \alpha_2(1,-1)
+\implies \alpha_1 = 2,\;\alpha_2 = 1.
+\]
+So OLS has component $2$ along the stable direction and $1$ along
+the unstable direction.
+
+\medskip\noindent\textbf{Ridge coefficients.}
+In the eigenbasis, each component is simply multiplied by a shrinkage
+factor:
+\[
+\alpha_k^{\text{Ridge}}
+= \frac{\lambda_k}{\lambda_k + \lambda}\;\alpha_k^{\text{OLS}}.
+\]
+No matrix inversion is needed once you work in the eigenbasis.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{c|cc|cc|cc|c}
+\toprule
+& \multicolumn{2}{c|}{Shrinkage factor}
+& \multicolumn{2}{c|}{Eigencomponents}
+& \multicolumn{2}{c|}{Coefficients} & \\
+$\lambda$
+& $\frac{9}{9+\lambda}$ & $\frac{1}{1+\lambda}$
+& $\alpha_1^{\text{R}}$ & $\alpha_2^{\text{R}}$
+& $\hat\beta_1^{\text{R}}$ & $\hat\beta_2^{\text{R}}$
+& $\norm{\bhat_{\text{R}}}$ \\
+\midrule
+$0$   & $1$ & $1$
+      & $2$ & $1$
+      & $3$ & $1$
+      & $\sqrt{10}\approx 3.16$ \\[2pt]
+$1$   & $\frac{9}{10}$ & $\frac{1}{2}$
+      & $\frac{9}{5}$ & $\frac{1}{2}$
+      & $\frac{23}{10}$ & $\frac{13}{10}$
+      & $2.64$ \\[2pt]
+$10$  & $\frac{9}{19}$ & $\frac{1}{11}$
+      & $\frac{18}{19}$ & $\frac{1}{11}$
+      & $1.04$ & $0.86$
+      & $1.35$ \\[2pt]
+$100$ & $\frac{9}{109}$ & $\frac{1}{101}$
+      & $\frac{18}{109}$ & $\frac{1}{101}$
+      & $0.18$ & $0.16$
+      & $0.24$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\medskip\noindent\textbf{The key pattern.}
+At $\lambda=1$, the stable direction (eigenvalue $9$) retains $90\%$ of
+its OLS component, while the unstable direction (eigenvalue $1$) is
+already halved.
+At $\lambda=10$, the unstable direction is crushed to $9\%$ of its OLS
+value, while the stable direction still retains $47\%$.
+As $\lambda$ increases, the coefficient vector traces a \emph{curved}
+path from $(3,1)$ toward the origin---not a straight line, because
+the unstable eigencomponent collapses first.
+At $\lambda=100$, both coefficients are nearly equal
+($0.18$ vs.\ $0.16$) because only the stable ``sum'' direction
+retains any signal.
+\end{example}
+
+
+%--- Stop and Think: Ridge limits --------------------------------------
+
+\begin{stopandthink}
+\textbf{Ridge limits.}
+
+Recall that
+$\bhat_{\text{ridge}} = (\bX^\top\bX + \lambda\bI)^{-1}\bX^\top\by$,
+and in the eigendecomposition each component is shrunk by
+$\lambda_k / (\lambda_k + \lambda)$.
+\begin{enumerate}[nosep]
+  \item What happens as $\lambda \to 0$?
+        What does each shrinkage factor approach?
+  \item What happens as $\lambda \to \infty$?
+        What does each shrinkage factor approach?
+        What does $\bhat_{\text{ridge}}$ approach?
+  \item Is there a value of $\lambda$ for which Ridge is
+        equivalent to ignoring the data entirely?
+\end{enumerate}
+\emph{Answers:}
+(1)~As $\lambda \to 0$, each factor
+$\lambda_k/(\lambda_k + \lambda) \to 1$,
+so $\bhat_{\text{ridge}} \to \bhat_{\text{OLS}}$.
+Ridge with no penalty is OLS\@.
+
+(2)~As $\lambda \to \infty$, each factor
+$\lambda_k/(\lambda_k + \lambda) \to 0$,
+so $\bhat_{\text{ridge}} \to \bm{0}$.
+Infinite penalty shrinks all coefficients to zero---the model predicts
+$\hat{y}_i = 0$ for everyone (or $\hat{y}_i = \bar{y}$ if the intercept
+is not penalised).
+
+(3)~Yes: $\lambda = \infty$ means the model ignores the data
+completely and defaults to the prior that all coefficients are zero.
+Ridge traces a continuous path from ``trust the data fully''
+($\lambda=0$) to ``trust the prior fully'' ($\lambda=\infty$).
+\end{stopandthink}
+
+
+\medskip
+\noindent\textbf{Geometric interpretation.}
+The OLS solution must lie in the unconstrained parameter space.
+The Ridge solution must lie inside a sphere
+$\{\bm{\beta}:\norm{\bm{\beta}}\le t\}$ for some $t$ determined
+by $\lambda$.
+If the OLS solution is already inside the sphere, Ridge and OLS agree.
+Otherwise, the Ridge solution is the point on the sphere's surface
+that minimises the residual sum of squares---where the RSS
+contour ellipse first touches the sphere.
+See Figure~\ref{fig:ridge-lasso} for this picture in two dimensions:
+the solid circle is the $L^2$ constraint region, and the Ridge
+solution is the tangency point between the RSS ellipse and the sphere.
+
+
+%----------------------------------------------------------------------
+\subsection{LASSO regression}
+%----------------------------------------------------------------------
+
+\begin{definition}
+The \textbf{LASSO estimator} with penalty $\lambda\ge 0$ is
+\[
+  \bhat_{\text{lasso}}
+  = \argmin_{\bm{\beta}}\left\{
+      \norm{\by-\bX\bm{\beta}}^2 + \lambda\norm{\bm{\beta}}_1
+    \right\},
+\]
+where $\norm{\bm{\beta}}_1 = \sum_j|\beta_j|$.
+\end{definition}
+
+\noindent\textbf{Corner geometry and sparsity.}
+The $L^1$ constraint region
+$\{(\beta_1,\dots,\beta_p) : |\beta_1|+\cdots+|\beta_p| \le t\}$
+is a diamond (cross-polytope) instead of a sphere.
+Its surface has \emph{corners}---points where one or more coordinates
+are exactly zero.
+The RSS contour ellipses are more likely to first touch the diamond
+at a corner, producing \textbf{exact zeros} in the coefficient vector
+(see Figure~\ref{fig:ridge-lasso}, dashed diamond).
+
+Why?
+A corner is a ``pointy'' protrusion: an expanding ellipse approaching
+from the direction of $\bhat_{\text{OLS}}$ will generically hit a
+corner before it hits a smooth edge.
+In contrast, the $L^2$ sphere has no corners, so the tangency point
+generically has \emph{all} coordinates nonzero.
+
+\medskip
+\noindent\textbf{Sparsity as a corner solution.}
+LASSO performs automatic variable selection: as $\lambda$ increases,
+coefficients are driven to zero one by one.
+Each zero corresponds to the solution hitting a corner of the $L^1$
+diamond.
+This is not an algebraic trick---it is a consequence of the geometry
+of touching a polytope with an ellipsoid.
+
+\begin{stopandthink}
+\textbf{Why corners attract LASSO solutions.}
+
+Grab a piece of paper and try this:
+\begin{enumerate}[nosep]
+  \item In $\R^2$, draw the $L^1$ diamond
+        $\{(\beta_1, \beta_2) : |\beta_1| + |\beta_2| \le 1\}$.
+        It has corners at $(1,0)$, $(-1,0)$, $(0,1)$, $(0,-1)$.
+  \item Draw a family of concentric ellipses centred at some point
+        outside the diamond (this represents the RSS contours centred
+        at $\bhat_{\text{OLS}}$).
+  \item Starting from the smallest ellipse, gradually expand it until
+        it first touches the diamond. Where does it touch?
+  \item Now replace the diamond with the $L^2$ circle
+        $\{(\beta_1, \beta_2) : \beta_1^2 + \beta_2^2 \le 1\}$
+        and repeat. Where does the first contact occur now?
+\end{enumerate}
+\emph{Key observation:}
+The diamond's corners are ``pointy''---an expanding ellipse is far more
+likely to first touch a corner (where one coordinate is exactly zero)
+than a smooth edge.
+The circle has no corners, so the first contact is almost always at a
+point where \emph{both} coordinates are nonzero.
+This is why LASSO produces sparse solutions (exact zeros) and Ridge
+does not.
+The geometry of the constraint set, not the algebra, is what drives
+sparsity.
+\end{stopandthink}
+
+
+%----------------------------------------------------------------------
+\subsection{Ridge vs.\ LASSO: a comparison}
+%----------------------------------------------------------------------
+
+Figure~\ref{fig:ridge-lasso} illustrates both constraint regions
+simultaneously.
+The OLS estimate $\bhat_{\text{OLS}}$ sits at the centre of the
+elliptical RSS contours.
+Ridge constrains the solution to the $L^2$ sphere (solid circle);
+LASSO constrains it to the $L^1$ diamond (dashed).
+The regularised solutions are the tangency points.
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+& \textbf{Ridge ($L^2$)} & \textbf{LASSO ($L^1$)} \\
+\midrule
+Constraint shape & Sphere (smooth) & Diamond (corners) \\
+Shrinkage type & Anisotropic via eigenvalues & Along coordinate axes \\
+Coefficient path & Smooth shrinkage toward 0 & Coefficients hit 0 exactly \\
+Variable selection & No (all coefficients remain) & Yes (sparsity) \\
+Best when & Many small effects (dense) & Few large effects (sparse) \\
+Closed-form solution & Yes & No (requires iterative solver) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+
+%----------------------------------------------------------------------
+\subsection{Reconnecting to the geometric framework}
+%----------------------------------------------------------------------
+
+Neither Ridge nor LASSO is an orthogonal projection.
+Both sacrifice the ``closest point'' property---accepting bias---in
+exchange for a (potentially large) reduction in variance.
+The telescope analogy captures the trade-off:
+you give up perfect aim to eliminate the shake.
+
+Yet the connection to the projection framework runs deeper than it
+first appears.
+Recall from Section~\ref{sec:multicollinearity} that
+multicollinearity makes the column space geometrically thin:
+the eigenvalue spectrum of $\bX^\top\bX$ has a few large values
+and some dangerously small ones.
+OLS faithfully projects onto this flattened space, and in doing so
+amplifies noise along the thin directions.
+Ridge responds by \emph{reshaping} the eigenvalue landscape:
+it replaces $\lambda_k$ with $\lambda_k + \lambda$, inflating every
+eigenvalue and rounding out the column space's geometry.
+The thinner a direction was, the more it gets inflated in relative
+terms---precisely the directions that needed stabilising.
+
+Ridge is the projection framework's answer to its own weakness.
+When the geometry is unstable, you reshape the geometry.

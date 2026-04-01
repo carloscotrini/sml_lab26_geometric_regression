@@ -1,0 +1,651 @@
+% =====================================================================
+% Round 2: Mathematical Improvements for "The Geometry of Linear Regression"
+% =====================================================================
+%
+% This file contains complete, self-contained LaTeX blocks to be inserted
+% into lecture_notes.tex. Each block is preceded by an insertion directive.
+% All blocks use the macros already defined in the main document:
+%   \bX, \by, \bH, \bM, \be, \yhat, \bhat, \btilde,
+%   \bI, \bQ, \bD, \Col, \ip, \norm, \R, \tr, \rank, \diag, \argmin
+%
+% =====================================================================
+
+
+% =====================================================================
+% ITEM 1: Proof of the Projection Theorem (finite-dimensional)
+% INSERT: Immediately after Theorem 1.1 (the statement of the Projection
+%         Theorem), replacing the current gap before "Ordinary least
+%         squares is the Projection Theorem applied to..."
+% =====================================================================
+
+\begin{proof}
+We work in $V = \R^n$ with the Euclidean inner product, and $S$ is a
+$p$-dimensional subspace (hence closed).  The proof has three parts:
+existence, uniqueness, and the orthogonality characterisation.
+
+\medskip
+\noindent\textbf{Step 1: Existence.}
+Let $d = \inf_{\bm{s}\in S}\norm{\by - \bm{s}}$.
+Choose any $\bm{s}_0 \in S$. Then every minimising candidate satisfies
+$\norm{\by - \bm{s}} \le \norm{\by - \bm{s}_0}$,
+so the search is confined to the closed, bounded set
+$\{\bm{s}\in S : \norm{\by - \bm{s}} \le \norm{\by - \bm{s}_0}\}$.
+Since $S$ is a subspace of a finite-dimensional space, this set is compact.
+The continuous function $\bm{s}\mapsto\norm{\by - \bm{s}}$ attains its
+minimum on a compact set, so there exists $\yhat\in S$ with
+$\norm{\by - \yhat} = d$.
+
+\medskip
+\noindent\textbf{Step 2: Uniqueness.}
+Suppose $\yhat$ and $\yhat'$ are both minimisers.
+By the parallelogram law,
+\[
+  \norm{(\by - \yhat) + (\by - \yhat')}^2
+  + \norm{(\by - \yhat) - (\by - \yhat')}^2
+  = 2\norm{\by - \yhat}^2 + 2\norm{\by - \yhat'}^2.
+\]
+The left-hand side rewrites as
+$\norm{2\by - \yhat - \yhat'}^2 + \norm{\yhat' - \yhat}^2$,
+and the right-hand side equals $4d^2$.
+Now $\frac{1}{2}(\yhat + \yhat') \in S$ (since $S$ is a subspace), so
+\[
+  \norm{2\by - \yhat - \yhat'}^2
+  = 4\,\norm{\by - \tfrac{\yhat+\yhat'}{2}}^2
+  \ge 4d^2.
+\]
+Therefore $\norm{\yhat' - \yhat}^2 \le 4d^2 - 4d^2 = 0$,
+which forces $\yhat' = \yhat$.
+
+\medskip
+\noindent\textbf{Step 3: Orthogonality condition.}
+Let $\bm{v}\in S$ be arbitrary and $t\in\R$.
+Since $\yhat + t\bm{v}\in S$, the minimality of $\yhat$ gives
+\[
+  f(t)
+  \;=\; \norm{\by - \yhat - t\bm{v}}^2
+  \;=\; \norm{\by - \yhat}^2
+        - 2t\,\ip{\by - \yhat}{\bm{v}}
+        + t^2\norm{\bm{v}}^2
+  \;\ge\; f(0)
+  \quad\text{for all } t\in\R.
+\]
+The function $f$ is a quadratic in $t$ with minimum at $t=0$.
+Setting $f'(0) = 0$:
+\[
+  f'(0) = -2\,\ip{\by-\yhat}{\bm{v}} = 0
+  \qquad\Longrightarrow\qquad
+  \ip{\by - \yhat}{\bm{v}} = 0.
+\]
+Since $\bm{v}\in S$ was arbitrary, $(\by - \yhat)\perp S$.
+
+\medskip
+\noindent\textbf{Conversely}, if $\yhat\in S$ satisfies $(\by-\yhat)\perp S$,
+then for any $\bm{s}\in S$:
+\[
+  \norm{\by - \bm{s}}^2
+  = \norm{(\by - \yhat) + (\yhat - \bm{s})}^2
+  = \norm{\by - \yhat}^2 + \norm{\yhat - \bm{s}}^2
+  \ge \norm{\by - \yhat}^2,
+\]
+where the cross term vanishes because $(\by - \yhat)\perp(\yhat-\bm{s})$
+(since $\yhat - \bm{s}\in S$), and the Pythagorean theorem applies.
+Hence $\yhat$ is the unique minimiser.
+\end{proof}
+
+
+% =====================================================================
+% ITEM 2: Full FWL Proof (block elimination)
+% INSERT: Replace the current proof of Theorem (FWL) in Section 5
+% =====================================================================
+
+\begin{proof}
+The normal equations $\bX^\top\bX\,\bhat = \bX^\top\by$ in block form are
+\begin{equation}\label{eq:fwl-blocks}
+  \begin{pmatrix}
+    \bX_1^\top\bX_1 & \bX_1^\top\bX_2 \\
+    \bX_2^\top\bX_1 & \bX_2^\top\bX_2
+  \end{pmatrix}
+  \begin{pmatrix}\bhat_1 \\ \bhat_2\end{pmatrix}
+  =
+  \begin{pmatrix}\bX_1^\top\by \\ \bX_2^\top\by\end{pmatrix}.
+\end{equation}
+
+\noindent\textbf{Step 1: Solve the first block for $\bhat_1$.}
+The first block equation reads
+\[
+  \bX_1^\top\bX_1\,\bhat_1 + \bX_1^\top\bX_2\,\bhat_2
+  = \bX_1^\top\by.
+\]
+Since $\bX_1$ has full column rank, $\bX_1^\top\bX_1$ is invertible, giving
+\begin{equation}\label{eq:fwl-beta1}
+  \bhat_1
+  = (\bX_1^\top\bX_1)^{-1}\bX_1^\top\by
+    - (\bX_1^\top\bX_1)^{-1}\bX_1^\top\bX_2\,\bhat_2.
+\end{equation}
+
+\noindent\textbf{Step 2: Substitute into the second block.}
+The second block equation reads
+\[
+  \bX_2^\top\bX_1\,\bhat_1 + \bX_2^\top\bX_2\,\bhat_2
+  = \bX_2^\top\by.
+\]
+Substituting~\eqref{eq:fwl-beta1}:
+\begin{align*}
+  \bX_2^\top\bX_1
+  \bigl[(\bX_1^\top\bX_1)^{-1}\bX_1^\top\by
+        &- (\bX_1^\top\bX_1)^{-1}\bX_1^\top\bX_2\,\bhat_2\bigr]
+  + \bX_2^\top\bX_2\,\bhat_2
+  = \bX_2^\top\by.
+\end{align*}
+Expanding and rearranging:
+\begin{align*}
+  &\bX_2^\top\underbrace{\bX_1(\bX_1^\top\bX_1)^{-1}\bX_1^\top}_{\bI - \bM_1}\by
+  - \bX_2^\top\underbrace{\bX_1(\bX_1^\top\bX_1)^{-1}\bX_1^\top}_{\bI - \bM_1}\bX_2\,\bhat_2
+  + \bX_2^\top\bX_2\,\bhat_2
+  = \bX_2^\top\by.
+\end{align*}
+Since $\bX_1(\bX_1^\top\bX_1)^{-1}\bX_1^\top = \bI - \bM_1$, we can write:
+\begin{align*}
+  \bX_2^\top(\bI - \bM_1)\by
+  &+ \bigl[\bX_2^\top\bX_2
+     - \bX_2^\top(\bI - \bM_1)\bX_2\bigr]\bhat_2
+  = \bX_2^\top\by.
+\end{align*}
+
+\noindent\textbf{Step 3: Simplify.}
+Moving $\bX_2^\top(\bI-\bM_1)\by$ to the right-hand side:
+\[
+  \bX_2^\top\bM_1\bX_2\,\bhat_2
+  = \bX_2^\top\by - \bX_2^\top(\bI-\bM_1)\by
+  = \bX_2^\top\bM_1\by.
+\]
+Here we used $\bX_2^\top\bX_2 - \bX_2^\top(\bI-\bM_1)\bX_2 = \bX_2^\top\bM_1\bX_2$
+and $\bX_2^\top\by - \bX_2^\top(\bI-\bM_1)\by = \bX_2^\top\bM_1\by$.
+
+Since $\bM_1$ is symmetric and idempotent ($\bM_1^2 = \bM_1$, $\bM_1^\top = \bM_1$),
+we have
+\[
+  \bX_2^\top\bM_1\bX_2 = \bX_2^\top\bM_1^\top\bM_1\bX_2
+  = (\bM_1\bX_2)^\top(\bM_1\bX_2),
+\]
+which is the Gram matrix of the residualised predictors $\bM_1\bX_2$.
+Similarly, $\bX_2^\top\bM_1\by = (\bM_1\bX_2)^\top(\bM_1\by)$.
+
+Therefore, provided $\bM_1\bX_2$ has full column rank (i.e., $\bX_2$ is not
+in $\Col(\bX_1)$),
+\[
+  \boxed{\bhat_2
+  = \bigl[(\bM_1\bX_2)^\top(\bM_1\bX_2)\bigr]^{-1}(\bM_1\bX_2)^\top(\bM_1\by),}
+\]
+which is exactly the OLS estimator from regressing the residualised response
+$\bM_1\by$ on the residualised predictors $\bM_1\bX_2$.
+\end{proof}
+
+
+% =====================================================================
+% ITEM 3: Proper Gauss--Markov Proof
+% INSERT: Replace the current "Geometric proof sketch" of Theorem
+%         (Gauss--Markov) in Section 4
+% =====================================================================
+
+\begin{theorem}[Gauss--Markov]\label{thm:gm-full}
+Assume $E[\bm{\varepsilon}] = \bm{0}$ and
+$\text{Var}(\bm{\varepsilon}) = \sigma^2\bI_n$
+(no assumption on the distribution of $\bm{\varepsilon}$).
+Among all linear unbiased estimators of $\bm{c}^\top\bm{\beta}$
+(for any fixed $\bm{c}\in\R^p$), the OLS estimator
+$\bm{c}^\top\bhat = \bm{c}^\top(\bX^\top\bX)^{-1}\bX^\top\by$
+has the smallest variance.
+In the vector form: for any linear unbiased estimator
+$\btilde = \bm{C}\by$ of $\bm{\beta}$,
+\[
+  \text{Var}(\btilde) - \text{Var}(\bhat) \;\succeq\; \bm{0}
+  \qquad\text{(positive semi-definite).}
+\]
+\end{theorem}
+
+\begin{proof}
+\textbf{Step 1: Set up the alternative estimator.}
+Let $\btilde = \bm{C}\by$ be any linear estimator of $\bm{\beta}$, where
+$\bm{C}\in\R^{p\times n}$.  Write
+\[
+  \bm{C} = (\bX^\top\bX)^{-1}\bX^\top + \bD,
+\]
+where $\bD = \bm{C} - (\bX^\top\bX)^{-1}\bX^\top$ is the ``excess'' beyond
+the OLS matrix.
+
+\medskip
+\noindent\textbf{Step 2: Derive the constraint from unbiasedness.}
+For $\btilde$ to be unbiased for $\bm{\beta}$, we need
+$E[\btilde] = \bm{\beta}$ for \emph{every} $\bm{\beta}\in\R^p$.
+Since $\by = \bX\bm{\beta} + \bm{\varepsilon}$:
+\begin{align*}
+  E[\btilde]
+  &= \bm{C}\,E[\by]
+   = \bm{C}\bX\bm{\beta}
+   = \bigl[(\bX^\top\bX)^{-1}\bX^\top + \bD\bigr]\bX\bm{\beta} \\
+  &= \bI_p\bm{\beta} + \bD\bX\bm{\beta}
+   = (\bI_p + \bD\bX)\bm{\beta}.
+\end{align*}
+For this to equal $\bm{\beta}$ for every $\bm{\beta}$, we need
+\begin{equation}\label{eq:gm-constraint}
+  \boxed{\bD\bX = \bm{0}.}
+\end{equation}
+This is the key constraint: the rows of $\bD$ must be orthogonal to the
+columns of $\bX$.  In other words, $\bD$ maps the column space $\Col(\bX)$
+to zero.
+
+\medskip
+\noindent\textbf{Step 3: Compute the variance and decompose.}
+The variance of $\btilde$ is
+\begin{align*}
+  \text{Var}(\btilde)
+  &= \bm{C}\,\text{Var}(\by)\,\bm{C}^\top
+   = \sigma^2\bm{C}\bm{C}^\top \\
+  &= \sigma^2\bigl[(\bX^\top\bX)^{-1}\bX^\top + \bD\bigr]
+              \bigl[\bX(\bX^\top\bX)^{-1} + \bD^\top\bigr].
+\end{align*}
+Expanding the product:
+\begin{align*}
+  \bm{C}\bm{C}^\top
+  &= (\bX^\top\bX)^{-1}\underbrace{\bX^\top\bX}_{}(\bX^\top\bX)^{-1}
+     + (\bX^\top\bX)^{-1}\bX^\top\bD^\top
+     + \bD\bX(\bX^\top\bX)^{-1}
+     + \bD\bD^\top \\
+  &= (\bX^\top\bX)^{-1}
+     + (\bX^\top\bX)^{-1}\underbrace{(\bD\bX)^\top}_{\bm{0}}
+     + \underbrace{\bD\bX}_{\bm{0}}(\bX^\top\bX)^{-1}
+     + \bD\bD^\top,
+\end{align*}
+where the cross terms vanish by the constraint $\bD\bX = \bm{0}$.
+Therefore:
+\[
+  \text{Var}(\btilde)
+  = \sigma^2(\bX^\top\bX)^{-1} + \sigma^2\bD\bD^\top
+  = \text{Var}(\bhat) + \sigma^2\bD\bD^\top.
+\]
+
+\medskip
+\noindent\textbf{Step 4: Conclude.}
+The matrix $\bD\bD^\top$ is positive semi-definite (for any vector $\bm{v}$,
+$\bm{v}^\top\bD\bD^\top\bm{v} = \norm{\bD^\top\bm{v}}^2 \ge 0$).
+Therefore
+\[
+  \boxed{
+  \text{Var}(\btilde) - \text{Var}(\bhat)
+  = \sigma^2\bD\bD^\top \succeq \bm{0}.
+  }
+\]
+Equality holds if and only if $\bD = \bm{0}$, i.e., $\bm{C} = (\bX^\top\bX)^{-1}\bX^\top$.
+The OLS estimator is the unique Best Linear Unbiased Estimator (BLUE).
+\end{proof}
+
+\begin{remark}[Geometric reading of Gauss--Markov]
+The constraint $\bD\bX = \bm{0}$ says that the rows of $\bD$ live in
+$\Col(\bX)^\perp$.  Any linear unbiased estimator that differs from OLS
+must ``reach into'' the orthogonal complement of the column space to
+form its estimate.  But $\Col(\bX)^\perp$ is exactly where the noise lives
+(the residual space).  The extra term $\sigma^2\bD\bD^\top$ is the
+variance penalty for picking up noise from outside the column space.
+OLS is optimal precisely because it ignores everything orthogonal to
+$\Col(\bX)$.
+\end{remark}
+
+
+% =====================================================================
+% ITEM 4: Characterisation Theorem (Symmetric + Idempotent <=> Orthogonal
+%         Projection onto Column Space)
+% INSERT: In Section 3 (The Hat Matrix and the Right Angle), after the
+%         proof of Proposition (Properties of H), before the "Geometric
+%         meaning" paragraph. This replaces and subsumes the current
+%         informal geometric-meaning paragraph.
+% =====================================================================
+
+\begin{theorem}[Characterisation of Orthogonal Projections]\label{thm:proj-char}
+Let $\bm{P}\in\R^{n\times n}$.  The following are equivalent:
+\begin{enumerate}[nosep,label=(\alph*)]
+  \item $\bm{P}$ is the matrix of orthogonal projection onto $\Col(\bm{P})$.
+  \item $\bm{P}^2 = \bm{P}$ and $\bm{P}^\top = \bm{P}$.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+\textbf{(a) $\Rightarrow$ (b).}
+Let $W = \Col(\bm{P})$ and suppose $\bm{P}$ is the orthogonal projection
+onto $W$.  For any $\bm{v}\in\R^n$, $\bm{P}\bm{v}\in W$ and
+$\bm{v} - \bm{P}\bm{v}\in W^\perp$.
+
+\emph{Idempotency:}
+Since $\bm{P}\bm{v}\in W$, projecting it again gives
+$\bm{P}(\bm{P}\bm{v}) = \bm{P}\bm{v}$. Hence $\bm{P}^2 = \bm{P}$.
+
+\emph{Symmetry:}
+For any $\bm{u}, \bm{v}\in\R^n$,
+\begin{align*}
+  \ip{\bm{P}\bm{u}}{\bm{v}}
+  &= \ip{\bm{P}\bm{u}}{\bm{P}\bm{v} + (\bm{v}-\bm{P}\bm{v})} \\
+  &= \ip{\bm{P}\bm{u}}{\bm{P}\bm{v}} + \ip{\bm{P}\bm{u}}{\bm{v}-\bm{P}\bm{v}} \\
+  &= \ip{\bm{P}\bm{u}}{\bm{P}\bm{v}},
+\end{align*}
+because $\bm{P}\bm{u}\in W$ and $\bm{v}-\bm{P}\bm{v}\in W^\perp$.
+By the same argument with roles swapped,
+$\ip{\bm{u}}{\bm{P}\bm{v}} = \ip{\bm{P}\bm{u}}{\bm{P}\bm{v}}$.
+Therefore $\ip{\bm{P}\bm{u}}{\bm{v}} = \ip{\bm{u}}{\bm{P}\bm{v}}$ for all
+$\bm{u},\bm{v}$, which means $\bm{P}^\top = \bm{P}$.
+
+\medskip
+\noindent\textbf{(b) $\Rightarrow$ (a).}
+Assume $\bm{P}^2 = \bm{P}$ and $\bm{P}^\top = \bm{P}$.
+Let $W = \Col(\bm{P})$.
+We must show: for every $\bm{v}\in\R^n$,
+(i) $\bm{P}\bm{v}\in W$, and
+(ii) $\bm{v} - \bm{P}\bm{v} \perp W$.
+
+Part (i) is immediate: $\bm{P}\bm{v}$ is a column of $\bm{P}$ (times scalars),
+hence in $\Col(\bm{P}) = W$.
+
+For part (ii), let $\bm{w}\in W$ be arbitrary. Then $\bm{w} = \bm{P}\bm{z}$
+for some $\bm{z}$.  Compute:
+\[
+  \ip{\bm{v} - \bm{P}\bm{v}}{\bm{w}}
+  = \ip{\bm{v} - \bm{P}\bm{v}}{\bm{P}\bm{z}}
+  = (\bm{v} - \bm{P}\bm{v})^\top\bm{P}\bm{z}
+  = \bm{v}^\top\bm{P}\bm{z} - \bm{v}^\top\bm{P}^\top\bm{P}\bm{z}.
+\]
+Using $\bm{P}^\top = \bm{P}$ and then $\bm{P}^2 = \bm{P}$:
+\[
+  = \bm{v}^\top\bm{P}\bm{z} - \bm{v}^\top\bm{P}^2\bm{z}
+  = \bm{v}^\top\bm{P}\bm{z} - \bm{v}^\top\bm{P}\bm{z}
+  = 0.
+\]
+Since $\bm{w}\in W$ was arbitrary, $(\bm{v}-\bm{P}\bm{v})\perp W$.
+\end{proof}
+
+\begin{remark}[Why this theorem matters]
+This theorem is the geometric backbone of all projection-based arguments in
+linear regression.  It tells us that verifying two algebraic properties
+(symmetry and idempotency) is \emph{necessary and sufficient} to conclude
+that a matrix is an orthogonal projection.
+\begin{itemize}[nosep]
+  \item The hat matrix $\bH = \bX(\bX^\top\bX)^{-1}\bX^\top$ satisfies both
+        properties (Proposition~\ref{prop:hat}), confirming it is the orthogonal
+        projection onto $\Col(\bX)$.
+  \item The annihilator $\bM = \bI - \bH$ likewise satisfies both, confirming
+        it is the orthogonal projection onto $\Col(\bX)^\perp$.
+  \item Idempotency alone (\emph{without} symmetry) gives an \emph{oblique}
+        projection: the decomposition $\bm{v} = \bm{P}\bm{v} + (\bm{v}-\bm{P}\bm{v})$
+        still holds, but the two components are not perpendicular.
+        Symmetry is what makes the projection \emph{orthogonal}---it ensures
+        the ``shadow falls straight down'' rather than at an angle.
+\end{itemize}
+\end{remark}
+
+
+% =====================================================================
+% ITEM 5a: Full Column Rank Assumption Box
+% INSERT: At the very beginning of Section 2, immediately after the
+%         section heading "Where Coefficients Come From", before
+%         \subsection{Setup and notation}
+% =====================================================================
+
+\begin{tcolorbox}[
+  colback=colspace!8, colframe=colspace!80!black,
+  fonttitle=\bfseries, title=Standing Assumption,
+  arc=2mm, boxrule=0.8pt
+]
+\textbf{Full column rank.}
+Throughout these notes (unless stated otherwise), we assume that the
+$n\times p$ design matrix $\bX$ has \textbf{full column rank}:
+$\rank(\bX) = p$, with $n \ge p$.
+
+This is equivalent to any of the following:
+\begin{enumerate}[nosep,label=(\roman*)]
+  \item The columns of $\bX$ are linearly independent.
+  \item The Gram matrix $\bX^\top\bX\in\R^{p\times p}$ is invertible
+        (positive definite).
+  \item The column space $\Col(\bX)$ has dimension exactly $p$.
+  \item No predictor is an exact linear combination of the others.
+\end{enumerate}
+Without this assumption, $(\bX^\top\bX)^{-1}$ does not exist, and the OLS
+coefficient vector $\bhat$ is not uniquely determined (although the
+fitted values $\yhat = \bH\by$ remain unique as a projection).
+\end{tcolorbox}
+
+
+% =====================================================================
+% ITEM 5b: Fix h_ii >= 1/n (requires intercept)
+% INSERT: Replace the current Definition of leverage in Section 5
+%         (Leverage and Influence), specifically the claim
+%         "1/n <= h_{ii} <= 1"
+% =====================================================================
+
+\begin{definition}
+The \textbf{leverage} of observation $i$ is $h_{ii}$, the $i$-th diagonal
+element of $\bH$. By Proposition~\ref{prop:hat}(iv),
+$0 \le h_{ii} \le 1$ and $\sum_i h_{ii} = p$.
+The conventional threshold for ``high leverage'' is $h_{ii} > 2p/n$.
+\end{definition}
+
+\begin{remark}[The bound $h_{ii}\ge 1/n$ when an intercept is present]\label{rem:hii-intercept}
+When the model includes an intercept (i.e., a column of ones $\bm{1}\in\Col(\bX)$),
+the leverage satisfies the stronger bound $h_{ii}\ge 1/n$.
+To see why: the hat matrix projects onto $\Col(\bX)$, which contains $\bm{1}$.
+In particular, $\bH\bm{1} = \bm{1}$, so the $i$-th row of $\bH$ sums to 1:
+$\sum_{j=1}^n h_{ij} = 1$.
+Since $\bH$ is an orthogonal projection, $h_{ij}^2 \le h_{ii}\cdot h_{jj} \le h_{ii}$
+(by Cauchy--Schwarz applied to the rows/columns of $\bH$).  In particular,
+\[
+  1 = \Bigl(\sum_{j=1}^n h_{ij}\Bigr)^2
+  \le n\sum_{j=1}^n h_{ij}^2
+  = n\,(\bH^2)_{ii}
+  = n\,h_{ii},
+\]
+where the inequality is Cauchy--Schwarz and the last step uses $\bH^2 = \bH$.
+Therefore $h_{ii}\ge 1/n$.
+
+Without an intercept, it is possible to have $h_{ii} = 0$ (for an observation
+$\bm{x}_i$ orthogonal to every column of $\bX$), so the general bound is
+$0 \le h_{ii} \le 1$.
+\end{remark}
+
+
+% =====================================================================
+% ITEM 5c: Fix "symmetry treats all directions equally"
+% INSERT: Replace the current paragraph that begins "Symmetry says
+%         the projection treats all directions equally..." in Section 3,
+%         after the proof of Proposition (Properties of H)
+% =====================================================================
+
+% REPLACE the paragraph:
+%   "Symmetry says the projection treats all directions equally---it
+%    flattens onto the plane without distortion."
+% WITH:
+
+\noindent\textbf{Geometric meaning.}
+Idempotency says: \emph{the shadow of a shadow is itself.}
+If $\yhat$ is already on the column space, projecting it again
+changes nothing.
+Symmetry says the projection is \emph{orthogonal} (perpendicular), not
+oblique.
+A non-symmetric idempotent matrix would still decompose
+$\by = \bm{P}\by + (\bI - \bm{P})\by$ into a component in $\Col(\bm{P})$
+and a remainder, but the two components would not be perpendicular---the
+``shadow'' would fall at a slant.
+Symmetry of $\bH$ is what guarantees that the residual $\be = (\bI-\bH)\by$
+is truly perpendicular to the column space, so that
+$\ip{\yhat}{\be} = \by^\top\bH^\top(\bI-\bH)\by = \by^\top(\bH - \bH^2)\by = 0$.
+In short: \emph{idempotency makes it a projection; symmetry makes it orthogonal.}
+
+
+% =====================================================================
+% ITEM 5d: Remark on SST = SSR + SSE requiring intercept
+% INSERT: After the variance decomposition equation
+%         SST = SSR + SSE in Section 4 (Pythagoras Runs a Regression),
+%         after "The variance decomposition is the Pythagorean theorem..."
+% =====================================================================
+
+\begin{remark}[The intercept is needed for SST $=$ SSR $+$ SSE]\label{rem:intercept-decomp}
+The decomposition $\text{SST} = \text{SSR} + \text{SSE}$ requires that the
+model includes an intercept (equivalently, that $\bm{1}\in\Col(\bX)$).
+Here is why.
+
+The decomposition uses demeaned vectors: $\tilde{\by} = \by - \bar{y}\bm{1}$
+and $\tilde{\yhat} = \yhat - \bar{y}\bm{1}$.  The Pythagorean theorem gives
+$\norm{\tilde{\by}}^2 = \norm{\tilde{\yhat}}^2 + \norm{\be}^2$
+only if $\tilde{\yhat}\perp\be$.
+
+Now $\tilde{\yhat} = \yhat - \bar{y}\bm{1}$.
+We know $\yhat\perp\be$ is \emph{not} generally true (it holds only when
+$\by\in\Col(\bX)$).
+What we need is $(\yhat - \bar{y}\bm{1})\perp\be$, which expands to
+$\yhat^\top\be = \bar{y}\bm{1}^\top\be$.
+
+We always have $\yhat^\top\be = 0$ (since $\yhat\in\Col(\bX)$ and
+$\be\perp\Col(\bX)$).  So we need $\bar{y}\bm{1}^\top\be = 0$.
+If $\bar{y}\ne 0$, this requires $\bm{1}^\top\be = 0$, i.e., that the
+residuals sum to zero.
+
+The residuals sum to zero if and only if $\bm{1}\in\Col(\bX)$
+(because $\be\perp\Col(\bX)$ and $\bm{1}\in\Col(\bX)$ implies
+$\bm{1}^\top\be = 0$).
+Without an intercept, residuals need not sum to zero, and the clean
+decomposition $\text{SST} = \text{SSR} + \text{SSE}$ can fail.
+
+In models without an intercept, $R^2 = 1 - \text{SSE}/\text{SST}$
+can even be negative, which is a symptom of this geometric misalignment.
+\end{remark}
+
+
+% =====================================================================
+% ITEM 6: Adjusted R^2 with Geometric Interpretation
+% INSERT: After the R^2 monotonicity warning in Section 4, before
+%         Section 5 (Peeling Apart the Variables)
+% =====================================================================
+
+\subsection{Adjusted $R^2$: paying for dimensions}\label{sec:adj-r2}
+
+The monotonicity of $R^2$ (Proposition~\ref{prop:r2mono}) means that
+$R^2$ can never decrease when we add predictors, even useless ones.
+This makes raw $R^2$ unreliable for model comparison.
+The \textbf{adjusted $R^2$} corrects for this by penalising model complexity.
+
+\begin{definition}[Adjusted $R^2$]
+\[
+  R^2_{\text{adj}}
+  = 1 - \frac{\text{SSE}/(n-p)}{\text{SST}/(n-1)}
+  = 1 - \frac{n-1}{n-p}\,(1-R^2).
+\]
+\end{definition}
+
+\noindent\textbf{Algebraic reading.}
+Instead of comparing raw sums of squares (SSE vs SST), adjusted $R^2$
+compares \emph{mean squares}: it divides each by its degrees of freedom
+($n-p$ for the residuals, $n-1$ for the total).
+Adding a useless predictor decreases SSE only by the amount expected from
+fitting noise in one extra dimension, while $n-p$ decreases by 1.
+The ratio $\text{SSE}/(n-p)$ may actually increase, causing
+$R^2_{\text{adj}}$ to decrease.  Thus $R^2_{\text{adj}}$, unlike $R^2$,
+can go down when a predictor is added.
+
+\medskip
+\noindent\textbf{Geometric reading.}
+Think of the data vector $\by$ living in $\R^n$.
+The column space $\Col(\bX)$ has dimension $p$, and the residual space
+$\Col(\bX)^\perp$ has dimension $n - p$.
+When we project $\by$ onto a $p$-dimensional subspace, we are ``using up''
+$p$ dimensions to capture signal.  Even pure noise, projected onto a
+$p$-dimensional subspace, produces a nonzero shadow---on average, the
+squared length of this shadow is $p\sigma^2$.
+
+The residual $\be$ lives in the remaining $n-p$ dimensions.
+If the model captures no real signal, we expect
+$\norm{\be}^2 \approx (n-p)\sigma^2$ (noise spread over $n-p$ dimensions)
+and $\text{SST} \approx (n-1)\sigma^2$ (noise spread over $n-1$ dimensions,
+after demeaning).
+The ratio $\frac{\text{SSE}/(n-p)}{\text{SST}/(n-1)}$ then hovers around 1,
+giving $R^2_{\text{adj}} \approx 0$---correctly indicating no explanatory power.
+
+In short, $R^2_{\text{adj}}$ accounts for the fact that \emph{projecting onto
+a subspace costs degrees of freedom}: each dimension consumed by the model
+must ``earn its keep'' by reducing the residual more than random chance would.
+
+
+% =====================================================================
+% ITEM 7: Degrees of Freedom Section
+% INSERT: As a new subsection in Section 4 (Pythagoras Runs a Regression),
+%         after the adjusted R^2 subsection and before Section 5 (FWL).
+%         Alternatively, as a standalone subsection in Section 3 after the
+%         annihilator matrix subsection.
+% =====================================================================
+
+\subsection{Degrees of freedom: the dimension of the residual space}\label{sec:df}
+
+The phrase ``degrees of freedom'' appears throughout statistics, often without
+geometric motivation.  The projection framework makes it transparent.
+
+\begin{definition}[Degrees of freedom of the residual]
+In a linear model with $p$ parameters fitted to $n$ observations, the
+\textbf{residual degrees of freedom} is $n - p$.
+\end{definition}
+
+\noindent\textbf{Geometric interpretation.}
+The data vector $\by$ lives in $\R^n$.
+The projection $\yhat = \bH\by$ lives in $\Col(\bX)$, which has dimension $p$.
+The residual $\be = \bM\by$ lives in $\Col(\bX)^\perp$, which has dimension
+\[
+  \dim\bigl(\Col(\bX)^\perp\bigr) = n - \dim\bigl(\Col(\bX)\bigr) = n - p.
+\]
+This is confirmed algebraically: $\rank(\bM) = \tr(\bM) = \tr(\bI_n - \bH) = n - p$.
+
+The residual vector $\be\in\R^n$ has $n$ components, but it satisfies $p$
+linear constraints ($\bX^\top\be = \bm{0}$, i.e., $\be\perp\Col(\bX)$).
+So $\be$ is free to vary in only $n - p$ dimensions.
+That is the number of ``degrees of freedom'' left after fitting the model.
+
+\begin{remark}[Why divide by $n-p$, not $n$]
+The unbiased estimator of $\sigma^2$ is
+\[
+  s^2 = \frac{\norm{\be}^2}{n - p} = \frac{\text{SSE}}{n-p},
+\]
+not $\norm{\be}^2/n$.  The geometric reason: $\be = \bM\bm{\varepsilon}$
+(since $\bM\bX = \bm{0}$), and the expected squared length of
+$\bm{\varepsilon}$ projected onto a $(n-p)$-dimensional subspace is
+\[
+  E[\norm{\bM\bm{\varepsilon}}^2]
+  = E[\bm{\varepsilon}^\top\bM\bm{\varepsilon}]
+  = \sigma^2\tr(\bM)
+  = (n-p)\sigma^2.
+\]
+(Here we used $E[\bm{\varepsilon}\bm{\varepsilon}^\top] = \sigma^2\bI$
+and the trace-expectation identity.)
+Dividing by $n-p$ exactly compensates for the dimensionality of the
+space into which the noise is projected, yielding $E[s^2] = \sigma^2$.
+
+Dividing by $n$ would systematically underestimate $\sigma^2$, because
+$p$ dimensions of the noise have been ``absorbed'' by the projection
+onto $\Col(\bX)$---the hat matrix captures $p$ dimensions worth of noise
+as spurious fit.
+\end{remark}
+
+\begin{remark}[Degrees-of-freedom bookkeeping]
+The total degrees of freedom decompose just like the sums of squares:
+\[
+  \underbrace{n-1}_{\text{total d.f.}}
+  \;=\;
+  \underbrace{p-1}_{\text{model d.f.}}
+  \;+\;
+  \underbrace{n-p}_{\text{residual d.f.}},
+\]
+where we subtract 1 from each side because the intercept uses one dimension
+to capture the mean (assuming the model includes an intercept).
+This mirrors the Pythagorean decomposition: each sum of squares is
+``spread'' over its corresponding number of dimensions, and dividing gives
+the mean square:
+\[
+  \text{MSR} = \frac{\text{SSR}}{p-1},
+  \qquad
+  \text{MSE} = \frac{\text{SSE}}{n-p}.
+\]
+The $F$-statistic (Section~\ref{sec:ftest}) is the ratio $\text{MSR}/\text{MSE}$:
+signal per dimension versus noise per dimension.
+\end{remark}

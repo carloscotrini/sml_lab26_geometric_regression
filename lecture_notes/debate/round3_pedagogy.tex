@@ -1,0 +1,754 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ROUND 3: PEDAGOGICAL ADDITIONS
+%% Complete LaTeX for all outstanding interactive and explanatory elements.
+%% Each piece specifies its placement location in the main lecture_notes.tex.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%======================================================================
+% PART 1: NEW TCOLORBOX DEFINITION — "Stop and Think" boxes
+%======================================================================
+%
+% PLACEMENT: After line 60 (after the \metaphor box definition),
+%            in the "Custom boxes" preamble section.
+
+\newtcolorbox{stopandthink}{
+  colback=colspace!8, colframe=colspace!80!black,
+  fonttitle=\bfseries, title={\raisebox{-0.1em}{\Large ?}\;\;Stop and Think},
+  arc=2mm, boxrule=0.8pt
+}
+
+% Also define a misconception box (red-themed, distinct from the generic warning):
+\newtcolorbox{misconception}{
+  colback=residual!8, colframe=residual!80!black,
+  fonttitle=\bfseries, title={Misconception Alert},
+  arc=2mm, boxrule=0.8pt
+}
+
+
+%======================================================================
+% PART 2: SEVEN "STOP AND THINK" BOXES
+%======================================================================
+
+% ─── STOP-AND-THINK 1 ─────────────────────────────────────────────────
+% PLACEMENT: After line 151 (after the Projection Theorem, before
+%            Section 2 "Where Coefficients Come From").
+
+\begin{stopandthink}
+\textbf{Exercise.}
+Take $\by = (3, 1)^\top$ and $\bm{x} = (2, 1)^\top$ in $\R^2$.
+The column space $\Col(\bm{x})$ is the line through the origin in the
+direction $(2,1)$.
+\begin{enumerate}[nosep]
+  \item Sketch the vectors $\by$ and $\bm{x}$ in $\R^2$.
+  \item Compute the projection of $\by$ onto $\Col(\bm{x})$ using the
+        formula $\yhat = \bm{x}(\bm{x}^\top\bm{x})^{-1}\bm{x}^\top\by$.
+        Where does the projection land on the line?
+  \item Draw the residual vector $\be = \by - \yhat$.
+        Verify visually that it is perpendicular to $\bm{x}$.
+  \item Compute $\bm{x}^\top \be$ and confirm it equals zero.
+\end{enumerate}
+\emph{Answer check:} You should get $\yhat = \tfrac{7}{5}(2, 1)^\top
+= (2.8,\, 1.4)^\top$ and $\be = (0.2,\, -0.4)^\top$.
+\end{stopandthink}
+
+
+% ─── STOP-AND-THINK 2 ─────────────────────────────────────────────────
+% PLACEMENT: After line 264 (after the proof of hat matrix properties,
+%            before "Geometric meaning" paragraph).
+
+\begin{stopandthink}
+\textbf{Quick calculation.}
+Suppose you fit a model with $p = 2$ predictors (including the intercept)
+to $n = 10$ observations.
+\begin{enumerate}[nosep]
+  \item What is $\tr(\bH)$?
+  \item What is the average leverage $\bar{h} = \frac{1}{n}\sum_i h_{ii}$?
+  \item If one observation has leverage $h_{ii} = 0.6$, how does this
+        compare to the ``high leverage'' threshold $2p/n$?
+        Should you investigate this point?
+\end{enumerate}
+\emph{Answers:} (1)~$\tr(\bH) = p = 2$. \quad
+(2)~$\bar{h} = p/n = 0.2$. \quad
+(3)~Threshold $= 2 \times 2 / 10 = 0.4$. Since $0.6 > 0.4$, yes---this
+observation has three times the average leverage and deserves scrutiny.
+\end{stopandthink}
+
+
+% ─── STOP-AND-THINK 3 ─────────────────────────────────────────────────
+% PLACEMENT: After line 338 (after "the right triangle
+%            $(\tilde{\by},\;\tilde{\yhat},\;\be)$ in $\R^n$",
+%            just before the TikZ figure).
+
+\begin{stopandthink}
+\textbf{Thought experiment: adding a random noise column.}
+
+Suppose your current model has $R^2 = 0.60$.
+You add a new column $\bm{z}$ to $\bX$, where $\bm{z}$ is pure random noise
+(independent of everything).
+\begin{enumerate}[nosep]
+  \item Will SSE increase, decrease, or stay the same?
+        \emph{Hint:} adding a column enlarges $\Col(\bX)$.
+  \item Will SSR increase, decrease, or stay the same?
+  \item Will $R^2$ increase, decrease, or stay the same?
+  \item If you keep adding random noise columns until $p = n$,
+        what happens to $R^2$?
+\end{enumerate}
+\emph{Answers:}
+(1)~SSE can only decrease (or stay the same)---the projection onto a
+larger subspace is always at least as close.
+(2)~Since SST is fixed and SSE decreases, SSR must increase.
+(3)~$R^2$ increases---even though the new column is pure noise!
+(4)~When $p = n$, $\Col(\bX) = \R^n$, so $\yhat = \by$, $\be = \bm{0}$,
+and $R^2 = 1$. The model ``explains'' everything but predicts nothing.
+This is why $R^2$ alone is not a reliable measure of model quality.
+\end{stopandthink}
+
+
+% ─── STOP-AND-THINK 4 ─────────────────────────────────────────────────
+% PLACEMENT: After line 517 (after the FWL Key Insight box,
+%            before the "two-step projection" paragraph).
+
+\begin{stopandthink}
+\textbf{Two limiting cases of FWL.}
+
+Recall that $\bhat_2 = (\bX_2^\top \bM_1 \bX_2)^{-1}\bX_2^\top \bM_1 \by$,
+where $\bM_1 = \bI - \bH_1$ removes the influence of $\bX_1$.
+\begin{enumerate}[nosep]
+  \item \textbf{Case 1:} $\bX_1 \perp \bX_2$
+    (i.e.\ $\bX_1^\top \bX_2 = \bm{0}$).
+    What does $\bM_1 \bX_2$ simplify to?
+    What does this tell you about the FWL coefficient $\bhat_2$
+    compared to the coefficient from a simple regression of $\by$ on $\bX_2$ alone?
+  \item \textbf{Case 2:} $\bX_2 \in \Col(\bX_1)$
+    (i.e.\ $\bX_2$ is a linear combination of the columns of $\bX_1$).
+    What does $\bM_1 \bX_2$ simplify to?
+    What goes wrong?
+\end{enumerate}
+\emph{Answers:}
+(1)~When $\bX_1 \perp \bX_2$, we have $\bH_1 \bX_2 = \bm{0}$, so
+$\bM_1 \bX_2 = \bX_2$. The residualised predictor equals the original
+predictor---controlling for $\bX_1$ changes nothing.
+The FWL coefficient equals the simple regression coefficient.
+This is why uncorrelated predictors give the same coefficients whether
+you include them together or separately.
+
+(2)~When $\bX_2 \in \Col(\bX_1)$, we have $\bH_1 \bX_2 = \bX_2$, so
+$\bM_1 \bX_2 = \bm{0}$. The residualised predictor is the zero vector.
+The formula $(\bX_2^\top \bM_1 \bX_2)^{-1}$ requires inverting a zero matrix,
+which is impossible.
+This is perfect multicollinearity: $\bX_2$ contains no information
+beyond what $\bX_1$ already provides.
+\end{stopandthink}
+
+
+% ─── STOP-AND-THINK 5 ─────────────────────────────────────────────────
+% PLACEMENT: After line 668 (after the "Influence = leverage x surprise"
+%            Key Insight box, before Section 6 "When the Geometry Fails").
+
+\begin{stopandthink}
+\textbf{Ranking influence.}
+
+Consider four observations in a simple linear regression.
+Rank them from \emph{smallest} to \emph{largest} Cook's distance $D_i$.
+\begin{enumerate}[nosep, label=(\alph*)]
+  \item \textbf{Central + on-trend:}
+        predictor value near $\bar{x}$, response close to the fitted line.
+  \item \textbf{Central + outlier:}
+        predictor value near $\bar{x}$, response far from the fitted line.
+  \item \textbf{Extreme + on-trend:}
+        predictor value far from $\bar{x}$, response close to the fitted line.
+  \item \textbf{Extreme + outlier:}
+        predictor value far from $\bar{x}$, response far from the fitted line.
+\end{enumerate}
+\emph{Answer:}
+\begin{itemize}[nosep]
+  \item (a) has low leverage \emph{and} low surprise $\Rightarrow$ smallest $D_i$.
+  \item (c) has high leverage but low surprise $\Rightarrow$ small $D_i$
+        (it reinforces the trend).
+  \item (b) has low leverage but high surprise $\Rightarrow$ moderate $D_i$
+        (it wants to move the line but lacks the mechanical advantage).
+  \item (d) has high leverage \emph{and} high surprise $\Rightarrow$ largest $D_i$
+        (the dangerous case).
+\end{itemize}
+Ranking: $(a) < (c) < (b) < (d)$.
+Note that (c) and (b) can swap depending on the magnitudes,
+but the extremes are always (a) smallest and (d) largest.
+\end{stopandthink}
+
+
+% ─── STOP-AND-THINK 6 ─────────────────────────────────────────────────
+% PLACEMENT: After line 823 (after the Ridge "selective geometric surgery"
+%            Key Insight box, before "Geometric interpretation" paragraph).
+
+\begin{stopandthink}
+\textbf{Ridge limits.}
+
+Recall that $\bhat_{\text{ridge}} = (\bX^\top\bX + \lambda\bI)^{-1}\bX^\top\by$,
+and in the eigendecomposition each component is shrunk by
+$\lambda_k / (\lambda_k + \lambda)$.
+\begin{enumerate}[nosep]
+  \item What happens as $\lambda \to 0$?
+        What does each shrinkage factor approach?
+  \item What happens as $\lambda \to \infty$?
+        What does each shrinkage factor approach?
+        What does $\bhat_{\text{ridge}}$ approach?
+  \item Is there a value of $\lambda$ for which Ridge is
+        equivalent to ignoring the data entirely?
+\end{enumerate}
+\emph{Answers:}
+(1)~As $\lambda \to 0$, each factor $\lambda_k/(\lambda_k + \lambda) \to 1$,
+so $\bhat_{\text{ridge}} \to \bhat_{\text{OLS}}$.
+Ridge with no penalty is OLS.
+
+(2)~As $\lambda \to \infty$, each factor $\lambda_k/(\lambda_k + \lambda) \to 0$,
+so $\bhat_{\text{ridge}} \to \bm{0}$.
+Infinite penalty shrinks all coefficients to zero---the model predicts
+$\hat{y}_i = 0$ for everyone (or $\hat{y}_i = \bar{y}$ if the intercept
+is not penalised).
+
+(3)~Yes: $\lambda = \infty$ means the model ignores the data completely
+and defaults to the prior that all coefficients are zero.
+Ridge traces a continuous path from ``trust the data fully'' ($\lambda=0$)
+to ``trust the prior fully'' ($\lambda=\infty$).
+\end{stopandthink}
+
+
+% ─── STOP-AND-THINK 7 ─────────────────────────────────────────────────
+% PLACEMENT: After line 859 (after "touching a polytope with an
+%            ellipsoid", before the Comparison subsection).
+
+\begin{stopandthink}
+\textbf{Why corners attract LASSO solutions.}
+
+Grab a piece of paper and try this:
+\begin{enumerate}[nosep]
+  \item In $\R^2$, draw the $L^1$ diamond
+        $\{(\beta_1, \beta_2) : |\beta_1| + |\beta_2| \le 1\}$.
+        It has corners at $(1,0)$, $(-1,0)$, $(0,1)$, $(0,-1)$.
+  \item Draw a family of concentric ellipses centred at some point
+        outside the diamond (this represents the RSS contours centred
+        at $\bhat_{\text{OLS}}$).
+  \item Starting from the smallest ellipse, gradually expand it until
+        it first touches the diamond. Where does it touch?
+  \item Now replace the diamond with the $L^2$ circle
+        $\{(\beta_1, \beta_2) : \beta_1^2 + \beta_2^2 \le 1\}$
+        and repeat. Where does the first contact occur now?
+\end{enumerate}
+\emph{Key observation:}
+The diamond's corners are ``pointy''---an expanding ellipse is far more
+likely to first touch a corner (where one coordinate is exactly zero)
+than a smooth edge.
+The circle has no corners, so the first contact is almost always at a
+point where \emph{both} coordinates are nonzero.
+This is why LASSO produces sparse solutions (exact zeros) and Ridge does not.
+The geometry of the constraint set, not the algebra, is what drives sparsity.
+\end{stopandthink}
+
+
+%======================================================================
+% PART 3: FIVE MISCONCEPTION WARNING BOXES
+%======================================================================
+
+% ─── MISCONCEPTION 1 ──────────────────────────────────────────────────
+% PLACEMENT: After line 292 (after the existing Warning about
+%            orthogonality being by construction, before Section 4
+%            "Pythagoras Runs a Regression").
+
+\begin{misconception}
+\textbf{``The projection validates the model.''}
+
+A common student error: ``My residuals are uncorrelated with my
+predictors, so the model must be correct.'' This confuses a
+\emph{property of the method} with \emph{evidence for the model}.
+
+The orthogonality $\bX^\top \be = \bm{0}$ holds for \emph{any}
+design matrix $\bX$, regardless of whether $\bX$ contains the
+right variables, whether the relationship is linear, or whether
+the errors are well-behaved. You could regress stock returns on
+the phases of the moon and the residuals would still be
+perpendicular to the moon-phase column.
+
+Residual-predictor orthogonality tells you that OLS did its job
+(found the closest point). It says nothing about whether the
+column space was the right target.
+\end{misconception}
+
+
+% ─── MISCONCEPTION 2 ──────────────────────────────────────────────────
+% PLACEMENT: After line 406 (after the R^2 Key Insight box,
+%            before Subsection "The Gauss--Markov theorem").
+
+\begin{misconception}
+\textbf{``$R^2 = 0.8$ means the model is good.''}
+
+$R^2$ measures a geometric angle---nothing more.
+A high $R^2$ does \emph{not} mean:
+\begin{itemize}[nosep]
+  \item The model is correctly specified (you might have the wrong
+        functional form or omitted variables).
+  \item The model will predict well out of sample (overfitting
+        inflates $R^2$ on training data).
+  \item The coefficients are meaningful (multicollinearity can give
+        $R^2 = 0.99$ with wildly unstable individual coefficients).
+\end{itemize}
+Conversely, a low $R^2$ does \emph{not} mean the model is useless.
+In fields with inherently noisy data (e.g.\ daily stock returns),
+$R^2 = 0.03$ can represent an economically significant and
+statistically reliable effect.
+
+$R^2$ answers exactly one question: ``What fraction of the total
+variability in $\by$ is captured by the projection onto $\Col(\bX)$?''
+Whether that fraction is ``good enough'' depends on the scientific
+context, not on any universal threshold.
+\end{misconception}
+
+
+% ─── MISCONCEPTION 3 ──────────────────────────────────────────────────
+% PLACEMENT: After line 534 (after the FWL two-step geometric
+%            explanation, before Subsection "The effect of predictor
+%            correlation").
+
+\begin{misconception}
+\textbf{``Controlling for $=$ holding constant physically.''}
+
+When we say ``the effect of education on income, controlling for age,''
+students often imagine an experiment where we literally hold someone's
+age fixed and change only their education.
+This is \emph{not} what regression does.
+
+``Controlling for'' in regression means a \emph{statistical} operation:
+we partial out the linear association of age with both income and
+education, and examine what remains.
+This is the FWL residualisation.
+It does not physically intervene on anyone's age---it merely
+removes the component of variation that is linearly predictable
+from age.
+
+The distinction matters because:
+\begin{itemize}[nosep]
+  \item If the relationship between age and the other variables is
+        nonlinear, the linear residualisation may not fully remove
+        age's influence.
+  \item If age causes education (e.g.\ older cohorts had fewer
+        educational opportunities), ``controlling for'' age may
+        absorb part of the causal effect you are trying to measure.
+  \item The phrase ``holding constant'' suggests a causal
+        intervention, but regression only identifies associations
+        within the residualised space. Causal conclusions require
+        additional assumptions (e.g.\ no unmeasured confounders).
+\end{itemize}
+\end{misconception}
+
+
+% ─── MISCONCEPTION 4 ──────────────────────────────────────────────────
+% PLACEMENT: After line 745 (after the VIF diagnostic paragraph,
+%            before Subsection "Omitted variable bias").
+
+\begin{misconception}
+\textbf{``Multicollinearity makes the model bad.''}
+
+Multicollinearity inflates standard errors of individual coefficients,
+but it does \emph{not}:
+\begin{itemize}[nosep]
+  \item Bias the OLS estimates (they remain unbiased).
+  \item Ruin the overall prediction ($\yhat$ and $R^2$ can be fine).
+  \item Invalidate the $F$-test for the joint significance of a group
+        of collinear predictors.
+\end{itemize}
+Multicollinearity is only a problem \emph{if you need to interpret
+individual coefficients}.
+If your goal is prediction, collinear predictors may cause no harm
+at all---the instability in individual $\hat{\beta}_j$ averages out in
+$\yhat = \bX\bhat$.
+
+The geometric picture makes this clear: the \emph{projection} $\yhat$
+onto the column space is perfectly stable.
+What is unstable is the \emph{decomposition} of $\yhat$ into
+contributions along nearly parallel basis vectors.
+The shadow is sharp; it is the coordinates of the shadow that jitter.
+\end{misconception}
+
+
+% ─── MISCONCEPTION 5 ──────────────────────────────────────────────────
+% PLACEMENT: After line 781 (after the OVB discussion ending with
+%            "which lies beyond the geometric framework",
+%            before Section 7 "Constraining the Shadow").
+
+\begin{misconception}
+\textbf{``Clean residual plots rule out omitted variable bias.''}
+
+Students sometimes reason: ``I checked my residual plots---no patterns,
+no heteroscedasticity, no outliers---so my model must be correctly
+specified.'' This is dangerously wrong.
+
+Omitted variable bias is \emph{invisible} to residual diagnostics.
+Both the ``short'' regression (omitting $\bX_2$) and the ``long''
+regression (including $\bX_2$) have perfectly orthogonal residuals and
+can pass every residual plot test with flying colours.
+The problem is not \emph{how} you projected but \emph{which column
+space} you projected onto.
+
+A real-world example: regressing health outcomes on exercise frequency
+without controlling for socioeconomic status will produce clean residuals
+but biased estimates, because wealthier people both exercise more
+and have better health for other reasons.
+The residual plot looks fine because OLS always produces residuals
+orthogonal to the included predictors---by construction, not by
+virtue of model correctness.
+
+The only safeguards against OVB are domain knowledge, causal reasoning,
+and sensitivity analysis---not statistical diagnostics.
+\end{misconception}
+
+
+%======================================================================
+% PART 4: FOUR NEW ANALOGIES
+%======================================================================
+
+% ─── ANALOGY 1: MOVIE-SCREEN ANALOGY FOR FWL ──────────────────────────
+% PLACEMENT: After line 534, right after the existing two-step geometric
+%            explanation, as a new paragraph before "The effect of predictor
+%            correlation" subsection. (In practice, insert just before line 536.)
+
+\medskip
+\noindent\textbf{The movie-screen analogy.}
+Imagine you are in a cinema, watching a scene projected onto a large screen
+(the column space $\Col(\bX_1, \bX_2)$).
+The projector beam is the data vector $\by$.
+Now suppose you want to see \emph{only} the contribution of the second
+actor ($\bX_2$), after removing everything the first actor ($\bX_1$)
+contributes to the scene.
+
+The FWL procedure is like placing a filter over the projector that blocks
+all wavelengths corresponding to $\bX_1$.
+What remains on the screen---$\bM_1 \by$ projected onto $\bM_1 \bX_2$---shows
+you the ``pure $\bX_2$ movie.''
+The key insight is that this filtered projection recovers \emph{exactly}
+the same coefficient $\bhat_2$ as watching the full unfiltered movie
+and decomposing algebraically.
+Filtering first, then projecting, gives the same answer as projecting
+the whole thing and reading off the $\bX_2$-coordinate.
+
+
+% ─── ANALOGY 2: TELESCOPE ANALOGY FOR REGULARISATION ──────────────────
+% PLACEMENT: After line 878 (after the Ridge/LASSO comparison table,
+%            after "Both trade a small amount of bias..." paragraph,
+%            before Section 8 "Testing with Geometry").
+
+\medskip
+\noindent\textbf{The telescope analogy.}
+Think of the OLS estimate as looking through a telescope on a windy night.
+The telescope points in the right direction on average (unbiasedness),
+but the wind makes it shake violently (high variance from
+multicollinearity or small sample size).
+Each snapshot is centered on the truth, but individual frames are blurry
+and useless.
+
+Regularisation is like tightening the telescope's mount.
+A tighter mount introduces a small systematic error---the telescope
+now points slightly away from the true target (bias).
+But the shaking is dramatically reduced (lower variance), so each
+individual frame is much sharper and more useful.
+
+Ridge tightens the mount uniformly in all directions.
+LASSO tightens some axes completely (locking them to zero) while
+leaving others free---it is like a mount that can only swivel along
+certain axes, automatically selecting which directions matter.
+
+The bias-variance trade-off is the trade-off between pointing accuracy
+and shake reduction.
+The optimal penalty $\lambda$ is the tightness that minimises the
+total blur (mean squared error = bias$^2$ + variance).
+
+
+% ─── ANALOGY 3: SHADOW-SHARPNESS ANALOGY FOR R² ──────────────────────
+% PLACEMENT: After line 406 (after the R^2 Key Insight box, and after
+%            Misconception 2 above; or immediately after the Key Insight
+%            box if misconception is placed elsewhere).
+
+\medskip
+\noindent\textbf{The shadow-sharpness analogy.}
+Think of $R^2$ as measuring how \emph{sharp} a shadow is.
+When the flashlight is nearly aligned with the data vector
+($\theta \approx 0$), the shadow $\yhat$ is almost as long as the
+object $\by$---the shadow is a crisp, faithful reproduction of the
+object ($R^2 \approx 1$).
+
+When the flashlight is nearly perpendicular to the data
+($\theta \approx 90^\circ$), the shadow shrinks to almost nothing---a
+tiny smudge that preserves none of the object's structure ($R^2 \approx 0$).
+
+A shadow with $R^2 = 0.5$ (i.e.\ $\theta = 45^\circ$) preserves half
+the object's ``energy'' (squared length).
+The shadow exists, but it is a washed-out version of the original.
+Whether that is good enough depends on what you need the shadow for.
+
+
+% ─── ANALOGY 4: HEARING-TEST ANALOGY FOR F-TEST ──────────────────────
+% PLACEMENT: After line 921 (after the F-test Key Insight box,
+%            before the Remark about $F = t^2$).
+
+\medskip
+\noindent\textbf{The hearing-test analogy.}
+The $F$-test is like an audiologist's hearing test.
+You are in a noisy room (the residual noise $\norm{\be}^2/(n-p)$).
+The audiologist plays a tone (the signal: $\norm{\yhat - \yhat_R}^2/q$)
+and asks: ``Can you hear it above the background noise?''
+
+If the tone is barely louder than the noise ($F \approx 1$), you cannot
+distinguish signal from static---the extra predictors are not doing
+anything detectable.
+If the tone is much louder ($F \gg 1$), you hear it clearly---the extra
+predictors have captured real structure.
+
+The $p$-value is the probability that background noise alone would
+produce a tone at least this loud.
+A small $p$-value means: ``It is very unlikely that random noise
+could mimic this signal; the extra predictors are probably real.''
+
+The number of extra predictors $q$ matters because each additional
+predictor is like an additional frequency channel.
+If you listen on many channels ($q$ large), you are more likely to hear
+\emph{something} by chance, so the test adjusts for this by dividing
+the total signal by $q$.
+
+
+%======================================================================
+% PART 5: THREE PREREQUISITE REVIEW PARAGRAPHS
+%======================================================================
+
+% ─── PREREQUISITE 1: LOEWNER ORDERING ─────────────────────────────────
+% PLACEMENT: After line 430 (after the Gauss--Markov proof,
+%            before Subsection "R^2 monotonicity").
+
+\medskip
+\begin{remark}[Prerequisite: the Loewner ordering]
+The Gauss--Markov theorem uses the notation
+$\bm{A} \succeq \bm{B}$ (the \emph{Loewner ordering}).
+This means $\bm{A} - \bm{B}$ is positive semi-definite, i.e.\
+$\bm{v}^\top(\bm{A} - \bm{B})\bm{v} \ge 0$ for all $\bm{v}$.
+
+For variance matrices, $\text{Var}(\btilde) \succeq \text{Var}(\bhat)$
+means: in \emph{every direction} $\bm{v}$, the variance of the linear
+combination $\bm{v}^\top\btilde$ is at least as large as the variance of
+$\bm{v}^\top\bhat$.
+It is a much stronger statement than saying ``the total variance is
+larger''---it says the OLS estimator wins direction by direction.
+
+A useful consequence: if $\bm{A} \succeq \bm{B} \succeq \bm{0}$, then
+every eigenvalue of $\bm{A}$ is at least as large as the corresponding
+eigenvalue of $\bm{B}$ (when both are expressed in the same basis).
+In the Gauss--Markov context, the ``extra'' term $\sigma^2\bD\bD^\top$
+is positive semi-definite (it is a product $\bD\bD^\top$), so the
+Loewner inequality $\text{Var}(\btilde) \succeq \text{Var}(\bhat)$ is
+immediate.
+\end{remark}
+
+
+% ─── PREREQUISITE 2: EIGENDECOMPOSITION OF SYMMETRIC MATRICES ─────────
+% PLACEMENT: After line 708 (after "What multicollinearity means"
+%            and before "The eigenvalue perspective" paragraph).
+%            Specifically, before "The eigenvalue decomposition of
+%            $\bX^\top\bX$ makes this precise."
+
+\medskip
+\begin{remark}[Prerequisite: eigendecomposition of symmetric matrices]
+Before proceeding, let us recall a fundamental fact from linear algebra.
+
+Every real symmetric matrix $\bm{A} \in \R^{p \times p}$ can be
+decomposed as
+\[
+  \bm{A} = \bQ \bm{\Lambda} \bQ^\top,
+\]
+where $\bQ = [\bm{q}_1 \mid \cdots \mid \bm{q}_p]$ is an orthogonal
+matrix ($\bQ^\top \bQ = \bI$) whose columns are the \emph{eigenvectors},
+and $\bm{\Lambda} = \diag(\lambda_1, \dots, \lambda_p)$ contains the
+corresponding \emph{eigenvalues}.
+
+Key properties:
+\begin{itemize}[nosep]
+  \item All eigenvalues of a real symmetric matrix are \emph{real}
+        (not complex).
+  \item The eigenvectors can be chosen to be \emph{orthonormal}.
+  \item If $\bm{A}$ is also positive semi-definite (like $\bX^\top\bX$),
+        all eigenvalues are non-negative: $\lambda_k \ge 0$.
+  \item The eigenvalues measure the ``stretch'' of the matrix in each
+        eigenvector direction: $\bm{A}\bm{q}_k = \lambda_k \bm{q}_k$.
+\end{itemize}
+
+The inverse (when it exists) is simply
+$\bm{A}^{-1} = \bQ \bm{\Lambda}^{-1} \bQ^\top
+= \bQ \, \diag(1/\lambda_1, \dots, 1/\lambda_p) \, \bQ^\top$.
+This makes it clear that small eigenvalues produce large entries in the
+inverse---the source of variance inflation under multicollinearity.
+\end{remark}
+
+
+% ─── PREREQUISITE 3: WHERE THE GAUSSIAN ENTERS ────────────────────────
+% PLACEMENT: After line 879 (after the Ridge/LASSO comparison and
+%            telescope analogy, before Section 8 "Testing with Geometry:
+%            The $F$-Test"). This prepares the reader for the inference
+%            machinery that follows.
+
+\medskip
+\begin{remark}[Prerequisite: where the Gaussian enters]
+Everything up to this point has been \emph{purely geometric}---no
+distributional assumptions were needed.
+The Projection Theorem, the hat matrix properties, Pythagoras, FWL,
+leverage, influence, multicollinearity, OVB, and even regularisation
+all follow from linear algebra alone.
+
+To perform \emph{inference}---hypothesis tests, $p$-values, confidence
+intervals---we need a probability model.
+The standard assumption is:
+\[
+  \by = \bX\bm{\beta} + \bm{\varepsilon},
+  \qquad
+  \bm{\varepsilon} \sim \mathcal{N}(\bm{0},\, \sigma^2 \bI_n).
+\]
+That is, the errors are independent, identically distributed, and
+Gaussian (normally distributed).
+
+Why does the Gaussian matter?
+\begin{itemize}[nosep]
+  \item \textbf{Exactness:} Under Gaussianity, $\bhat$ is exactly
+        $\mathcal{N}(\bm{\beta},\, \sigma^2(\bX^\top\bX)^{-1})$---not
+        just approximately. This gives us exact $t$- and $F$-distributions
+        for test statistics, valid in any sample size.
+  \item \textbf{Without Gaussianity:} The Central Limit Theorem still
+        ensures that $\bhat$ is \emph{approximately} normal in large samples.
+        So inference is approximately valid even when the true error
+        distribution is non-Gaussian---but only asymptotically.
+  \item \textbf{Geometry of the Gaussian:} A Gaussian vector projected
+        onto a subspace remains Gaussian. This is why the hat matrix
+        preserves normality: $\yhat = \bH\by$ and
+        $\be = \bM\by$ are both Gaussian, and they are
+        \emph{independent} (because $\bH\bM = \bm{0}$).
+        Independence of $\yhat$ and $\be$ is what makes the $F$-test work.
+\end{itemize}
+The next section uses these distributional facts to build hypothesis tests.
+\end{remark}
+
+
+%======================================================================
+% PART 6: TRANSITION SENTENCES BETWEEN SECTIONS
+%======================================================================
+
+% Each transition is a short paragraph to be inserted at the END of
+% a section, just before the next \section command.
+
+% ─── TRANSITION: Section 1 → Section 2 ────────────────────────────────
+% PLACEMENT: After line 151 (after "S = Col(X)", before line 153
+%            which is the Section 2 heading). Place BEFORE Stop-and-Think 1.
+
+\medskip
+\noindent\textit{The Projection Theorem guarantees that a closest point
+exists and is characterised by orthogonality.
+But how do we actually \emph{compute} it?
+The next section translates the geometric existence result into an
+explicit formula---the normal equations---and shows that the OLS
+coefficients are simply the coordinates of this closest point.}
+
+
+% ─── TRANSITION: Section 2 → Section 3 ────────────────────────────────
+% PLACEMENT: After line 227 (end of Section 2 "Building intuition"
+%            subsection, before line 230 which is the Section 3 heading).
+
+\medskip
+\noindent\textit{We now have a formula for the projection and its
+coordinates.
+But the formula hides a remarkable structure: the projection is a
+\emph{linear operator} $\bH$ with powerful algebraic properties.
+What can these properties tell us about individual observations,
+and about the projection itself?}
+
+
+% ─── TRANSITION: Section 3 → Section 4 ────────────────────────────────
+% PLACEMENT: After line 293 (end of Section 3, after the Warning box
+%            and Misconception 1 above, before Section 4 heading).
+
+\medskip
+\noindent\textit{The hat matrix decomposes $\by$ into two perpendicular
+pieces: the shadow $\yhat$ and the residual $\be$.
+Since these pieces are perpendicular, the Pythagorean theorem must
+apply.
+What does Pythagoras tell us about regression?
+The answer is the variance decomposition---and $R^2$ as an angle.}
+
+
+% ─── TRANSITION: Section 4 → Section 5 ────────────────────────────────
+% PLACEMENT: After line 451 (end of Section 4, after the $R^2$
+%            monotonicity Warning box, before line 454 which is the
+%            Section 5 heading).
+
+\medskip
+\noindent\textit{So far, we have treated the column space as a monolithic
+object and projected $\by$ onto it in one step.
+But in multiple regression, different predictors contribute different
+pieces of information.
+Can we tease apart the contributions?
+What does it really mean to ``control for'' a variable?
+The Frisch--Waugh--Lovell theorem answers this by decomposing the
+single projection into sequential steps.}
+
+
+% ─── TRANSITION: Section 5 → Section 6 ────────────────────────────────
+% PLACEMENT: After line 577 (end of Section 5, after the SE formula
+%            and multicollinearity explanation, before line 580 which
+%            is the Section 6 heading).
+
+\medskip
+\noindent\textit{FWL revealed that individual coefficients depend on
+the unique information each predictor contributes, as measured by
+the residualised predictor's length.
+But some observations contribute more to the projection than others.
+Which observations have the most influence on the fitted values,
+and how can we detect problematic data points?}
+
+
+% ─── TRANSITION: Section 6 → Section 7 ────────────────────────────────
+% PLACEMENT: After line 781 (end of Section 6, after the OVB discussion
+%            and Misconception 5 above, before Section 7 heading).
+
+\medskip
+\noindent\textit{Multicollinearity makes the column space geometrically
+thin, inflating coefficient variance.
+Omitted variable bias makes the column space the wrong target entirely.
+The first problem has a geometric remedy: can we \emph{constrain}
+the projection to trade a little bias for a lot of stability?
+This is the idea behind regularisation.}
+
+
+% ─── TRANSITION: Section 7 → Section 8 ────────────────────────────────
+% PLACEMENT: After line 879 (end of Section 7, after the comparison
+%            table and telescope analogy, after the Gaussian prerequisite
+%            remark, before Section 8 heading).
+
+\medskip
+\noindent\textit{Regularisation reshapes the geometry to stabilise
+estimates, but it cannot tell us whether the extra predictors are
+\emph{statistically significant}.
+For that, we need to compare two projections---one with and one
+without the extra variables---and ask whether the improvement is
+larger than what noise alone would produce.
+This brings us to the $F$-test.}
+
+
+% ─── TRANSITION: Section 8 → Section 9 ────────────────────────────────
+% PLACEMENT: After line 945 (end of Section 8, after the confidence
+%            ellipsoid paragraph "everything connects", before
+%            Section 9 heading).
+
+\medskip
+\noindent\textit{The $F$-test and confidence ellipsoids complete our
+inferential toolkit.
+But before we summarise, it is worth stepping back and asking:
+where does the geometric framework \emph{break down}?
+What can projections not tell us, and where must we look beyond
+linear algebra for answers?}
+
+
+%======================================================================
+% END OF ROUND 3 PEDAGOGICAL ADDITIONS
+%======================================================================
