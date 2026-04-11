@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Closest Point on a Subspace</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  h1 {
+    font-size: 1.6rem;
+    font-weight: 300;
+    letter-spacing: 0.04em;
+    margin-bottom: 6px;
+    color: #ccc;
+  }
+  .subtitle {
+    font-size: 0.9rem;
+    color: #888;
+    margin-bottom: 18px;
+  }
+  .container {
+    display: flex;
+    gap: 28px;
+    align-items: flex-start;
+  }
+  svg {
+    background: #12122a;
+    border: 1px solid #2a2a4a;
+    border-radius: 8px;
+    cursor: crosshair;
+  }
+  .panel {
+    background: #12122a;
+    border: 1px solid #2a2a4a;
+    border-radius: 8px;
+    padding: 20px;
+    width: 260px;
+    font-size: 0.85rem;
+    line-height: 1.7;
+  }
+  .panel h2 {
+    font-size: 1rem;
+    font-weight: 500;
+    margin-bottom: 12px;
+    color: #aaa;
+    border-bottom: 1px solid #2a2a4a;
+    padding-bottom: 8px;
+  }
+  .metric { margin-bottom: 6px; }
+  .metric .label { color: #888; }
+  .metric .value { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.82rem; }
+  .color-gold { color: #e6a817; }
+  .color-green { color: #50c878; }
+  .color-red { color: #e74c3c; }
+  .color-purple { color: #9b59b6; }
+  .color-blue { color: #4a90d9; }
+  .instructions {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #2a2a4a;
+    color: #666;
+    font-size: 0.78rem;
+    line-height: 1.6;
+  }
+  .instructions b { color: #888; font-weight: 500; }
+  .aha {
+    margin-top: 12px;
+    padding: 10px;
+    background: rgba(80, 200, 120, 0.06);
+    border: 1px solid rgba(80, 200, 120, 0.15);
+    border-radius: 6px;
+    color: #50c878;
+    font-size: 0.78rem;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+<h1>Closest Point on a Subspace</h1>
+<p class="subtitle">Drag <span style="color:#e6a817">y</span>, slide <span style="color:#9b59b6">s</span> along the line, or rotate the subspace direction</p>
+<div class="container">
+  <svg id="canvas" width="800" height="500"></svg>
+  <div class="panel">
+    <h2>Live Readout</h2>
+    <div class="metric">
+      <span class="label">Projection </span>
+      <span class="color-green value" id="val-yhat"></span>
+    </div>
+    <div class="metric">
+      <span class="label">Residual </span>
+      <span class="color-red value" id="val-e"></span>
+    </div>
+    <div class="metric">
+      <span class="label color-green">||y - y&#770;|| = </span>
+      <span class="color-green value" id="val-dist-yhat"></span>
+    </div>
+    <div class="metric">
+      <span class="label color-purple">||y - s|| = </span>
+      <span class="color-purple value" id="val-dist-s"></span>
+    </div>
+    <div class="metric" style="margin-top:8px;">
+      <span class="label">&#x27E8;y - y&#770;, v&#x27E9; = </span>
+      <span class="color-blue value" id="val-ortho"></span>
+    </div>
+    <div class="metric" id="optimality-msg" style="margin-top:8px; color:#50c878; font-weight:500; opacity:0;">
+      s = y&#770;  &mdash; distance minimised!
+    </div>
+    <div class="instructions">
+      <b>Drag</b> the gold point <b>y</b> anywhere.<br>
+      <b>Slide</b> the purple point <b>s</b> along the line.<br>
+      <b>Rotate</b> via the handle at the line's end.<br><br>
+      The <span class="color-green">green</span> point y&#770; is the orthogonal projection.
+    </div>
+    <div class="aha">
+      Aha: The distance ||y - s|| is minimised exactly when the connector is perpendicular to S. The circle is tangent to the line &mdash; no point on S lies inside it.
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const W = 800, H = 500;
+  const ox = W / 2, oy = H / 2;  // origin in SVG coords
+
+  // State
+  let subAngle = Math.PI / 6;  // subspace direction angle
+  let yPos = { x: 120, y: -160 };  // in math coords (right, up)
+  let sParam = 0.3;  // parameter along subspace for s
+
+  const svg = d3.select('#canvas');
+
+  // Defs
+  const defs = svg.append('defs');
+
+  // Arrowhead markers
+  function addArrow(id, color) {
+    defs.append('marker')
+      .attr('id', id)
+      .attr('viewBox', '0 0 10 10')
+      .attr('refX', 9).attr('refY', 5)
+      .attr('markerWidth', 8).attr('markerHeight', 8)
+      .attr('orient', 'auto-start-reverse')
+      .append('path')
+      .attr('d', 'M 0 1.5 L 10 5 L 0 8.5 Z')
+      .attr('fill', color);
+  }
+  addArrow('arr-blue', '#4a90d9');
+  addArrow('arr-gold', '#e6a817');
+  addArrow('arr-green', '#50c878');
+
+  // Glow filter
+  const filt = defs.append('filter').attr('id', 'glow');
+  filt.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'blur');
+  const merge = filt.append('feMerge');
+  merge.append('feMergeNode').attr('in', 'blur');
+  merge.append('feMergeNode').attr('in', 'SourceGraphic');
+
+  // Layers
+  const gGrid = svg.append('g');
+  const gCircle = svg.append('g');
+  const gSubspace = svg.append('g');
+  const gVectors = svg.append('g');
+  const gLabels = svg.append('g');
+
+  // Math to SVG coords
+  function m2s(mx, my) { return [ox + mx, oy - my]; }
+  function s2m(sx, sy) { return [sx - ox, oy - sy]; }
+
+  // Draw faint grid
+  for (let i = -400; i <= 400; i += 50) {
+    gGrid.append('line')
+      .attr('x1', ox + i).attr('y1', 0).attr('x2', ox + i).attr('y2', H)
+      .attr('stroke', '#1e1e3a').attr('stroke-width', 0.5);
+    gGrid.append('line')
+      .attr('x1', 0).attr('y1', oy + i).attr('x2', W).attr('y2', oy + i)
+      .attr('stroke', '#1e1e3a').attr('stroke-width', 0.5);
+  }
+  // Axes
+  gGrid.append('line').attr('x1', 0).attr('y1', oy).attr('x2', W).attr('y2', oy)
+    .attr('stroke', '#2a2a4a').attr('stroke-width', 1);
+  gGrid.append('line').attr('x1', ox).attr('y1', 0).attr('x2', ox).attr('y2', H)
+    .attr('stroke', '#2a2a4a').attr('stroke-width', 1);
+  // Origin label
+  gGrid.append('text').attr('x', ox + 6).attr('y', oy + 14)
+    .attr('fill', '#444').attr('font-size', '11px').text('O');
+
+  // Elements that get updated
+  const subLine = gSubspace.append('line')
+    .attr('stroke', '#4a90d9').attr('stroke-width', 2).attr('opacity', 0.7);
+  const subLabel = gLabels.append('text')
+    .attr('fill', '#4a90d9').attr('font-size', '14px').attr('font-weight', '500').text('S');
+
+  // Distance circle
+  const distCircle = gCircle.append('circle')
+    .attr('fill', 'none').attr('stroke', '#e6a817').attr('stroke-width', 1)
+    .attr('stroke-dasharray', '4,4').attr('opacity', 0.25);
+
+  // Residual line (dashed red)
+  const residualLine = gVectors.append('line')
+    .attr('stroke', '#e74c3c').attr('stroke-width', 2)
+    .attr('stroke-dasharray', '6,4').attr('opacity', 0.8);
+
+  // s-to-y line (dashed purple)
+  const sToYLine = gVectors.append('line')
+    .attr('stroke', '#9b59b6').attr('stroke-width', 1.5)
+    .attr('stroke-dasharray', '4,4').attr('opacity', 0.5);
+
+  // Right-angle mark
+  const rightAngle = gVectors.append('path')
+    .attr('stroke', '#50c878').attr('stroke-width', 1.5).attr('fill', 'none').attr('opacity', 0.7);
+
+  // Vector y (origin to y)
+  const vecY = gVectors.append('line')
+    .attr('stroke', '#e6a817').attr('stroke-width', 2.5)
+    .attr('marker-end', 'url(#arr-gold)').attr('filter', 'url(#glow)');
+  // Vector yhat (origin to yhat)
+  const vecYhat = gVectors.append('line')
+    .attr('stroke', '#50c878').attr('stroke-width', 2)
+    .attr('marker-end', 'url(#arr-green)');
+
+  // Points
+  const ptYhat = gVectors.append('circle').attr('r', 5).attr('fill', '#50c878');
+  const ptY = gVectors.append('circle').attr('r', 7).attr('fill', '#e6a817')
+    .attr('cursor', 'grab').attr('filter', 'url(#glow)');
+  const ptS = gVectors.append('circle').attr('r', 6).attr('fill', '#9b59b6')
+    .attr('cursor', 'grab').attr('filter', 'url(#glow)');
+
+  // Rotation handle
+  const rotHandle = gVectors.append('circle').attr('r', 6)
+    .attr('fill', 'none').attr('stroke', '#4a90d9').attr('stroke-width', 2)
+    .attr('cursor', 'grab');
+
+  // Labels on points
+  const labelY = gLabels.append('text')
+    .attr('fill', '#e6a817').attr('font-size', '14px').attr('font-weight', '600').text('y');
+  const labelYhat = gLabels.append('text')
+    .attr('fill', '#50c878').attr('font-size', '13px').attr('font-weight', '500').text('y\u0302');
+  const labelS = gLabels.append('text')
+    .attr('fill', '#9b59b6').attr('font-size', '14px').attr('font-weight', '600').text('s');
+  const labelE = gLabels.append('text')
+    .attr('fill', '#e74c3c').attr('font-size', '13px').attr('font-weight', '500').text('e');
+
+  // Tooltip elements
+  ptY.append('title').text('Drag to move y');
+  ptS.append('title').text('Drag along the subspace line');
+  rotHandle.append('title').text('Drag to rotate subspace direction');
+
+  function project(px, py, angle) {
+    const vx = Math.cos(angle), vy = Math.sin(angle);
+    const t = px * vx + py * vy;
+    return { x: t * vx, y: t * vy, t: t };
+  }
+
+  function update() {
+    const vx = Math.cos(subAngle), vy = Math.sin(subAngle);
+    // Subspace line — extend across canvas
+    const ext = 600;
+    const [lx1, ly1] = m2s(-ext * vx, -ext * vy);
+    const [lx2, ly2] = m2s(ext * vx, ext * vy);
+    subLine.attr('x1', lx1).attr('y1', ly1).attr('x2', lx2).attr('y2', ly2);
+
+    // Label S
+    const [slx, sly] = m2s(ext * 0.6 * vx, ext * 0.6 * vy);
+    subLabel.attr('x', slx + 10).attr('y', sly - 10);
+
+    // Projection
+    const proj = project(yPos.x, yPos.y, subAngle);
+    const yhat = { x: proj.x, y: proj.y };
+
+    // s point
+    const sLen = sParam * 300;
+    const sPos = { x: sLen * vx, y: sLen * vy };
+
+    // SVG positions
+    const [sy, syy] = m2s(yPos.x, yPos.y);
+    const [syh, syhh] = m2s(yhat.x, yhat.y);
+    const [ss, ssh] = m2s(sPos.x, sPos.y);
+
+    // Rotation handle position (at +200 along subspace)
+    const handleDist = 200;
+    const [rh, rhh] = m2s(handleDist * vx, handleDist * vy);
+    rotHandle.attr('cx', rh).attr('cy', rhh);
+
+    // Vector y
+    vecY.attr('x1', ox).attr('y1', oy).attr('x2', sy).attr('y2', syy);
+    // Vector yhat
+    vecYhat.attr('x1', ox).attr('y1', oy).attr('x2', syh).attr('y2', syhh);
+
+    // Residual
+    residualLine.attr('x1', syh).attr('y1', syhh).attr('x2', sy).attr('y2', syy);
+
+    // s-to-y line
+    sToYLine.attr('x1', ss).attr('y1', ssh).attr('x2', sy).attr('y2', syy);
+
+    // Points
+    ptYhat.attr('cx', syh).attr('cy', syhh);
+    ptY.attr('cx', sy).attr('cy', syy);
+    ptS.attr('cx', ss).attr('cy', ssh);
+
+    // Labels
+    labelY.attr('x', sy + 12).attr('y', syy - 10);
+    labelYhat.attr('x', syh + 10).attr('y', syhh - 14);
+    labelS.attr('x', ss + 10).attr('y', ssh - 10);
+
+    // Residual label at midpoint
+    const emx = (sy + syh) / 2, emy = (syy + syhh) / 2;
+    labelE.attr('x', emx + 8).attr('y', emy - 6);
+
+    // Right-angle mark
+    const markSize = 12;
+    // Perpendicular direction: from yhat toward y
+    const ex = yPos.x - yhat.x, ey = yPos.y - yhat.y;
+    const eLen = Math.sqrt(ex * ex + ey * ey);
+    if (eLen > 1) {
+      const ux = ex / eLen, uy = ey / eLen;
+      // Two legs of the right angle: along v and along u
+      const p1 = m2s(yhat.x + markSize * vx, yhat.y + markSize * vy);
+      const p2 = m2s(yhat.x + markSize * vx + markSize * ux, yhat.y + markSize * vy + markSize * uy);
+      const p3 = m2s(yhat.x + markSize * ux, yhat.y + markSize * uy);
+      rightAngle.attr('d', `M${p1[0]},${p1[1]} L${p2[0]},${p2[1]} L${p3[0]},${p3[1]}`);
+    }
+
+    // Distance circle centered at y with radius ||y - yhat||
+    const distYhat = Math.sqrt((yPos.x - yhat.x) ** 2 + (yPos.y - yhat.y) ** 2);
+    distCircle.attr('cx', sy).attr('cy', syy).attr('r', distYhat);
+
+    // Distances
+    const distS = Math.sqrt((yPos.x - sPos.x) ** 2 + (yPos.y - sPos.y) ** 2);
+    const innerProd = (yPos.x - yhat.x) * vx + (yPos.y - yhat.y) * vy;
+
+    // Update readouts
+    document.getElementById('val-yhat').textContent =
+      `(${(yhat.x / 50).toFixed(2)}, ${(yhat.y / 50).toFixed(2)})`;
+    document.getElementById('val-e').textContent =
+      `(${((yPos.x - yhat.x) / 50).toFixed(2)}, ${((yPos.y - yhat.y) / 50).toFixed(2)})`;
+    document.getElementById('val-dist-yhat').textContent = (distYhat / 50).toFixed(3);
+    document.getElementById('val-dist-s').textContent = (distS / 50).toFixed(3);
+    document.getElementById('val-ortho').textContent = (innerProd / 2500).toFixed(6);
+
+    // Optimality message
+    const diff = Math.abs(distS - distYhat);
+    const optMsg = document.getElementById('optimality-msg');
+    if (diff < 3) {
+      optMsg.style.opacity = '1';
+    } else {
+      optMsg.style.opacity = '0';
+    }
+  }
+
+  // Drag y
+  ptY.call(d3.drag()
+    .on('start', function() { d3.select(this).attr('cursor', 'grabbing'); })
+    .on('drag', function(event) {
+      const [mx, my] = s2m(event.x, event.y);
+      yPos.x = mx; yPos.y = my;
+      update();
+    })
+    .on('end', function() { d3.select(this).attr('cursor', 'grab'); })
+  );
+
+  // Drag s along the subspace
+  ptS.call(d3.drag()
+    .on('start', function() { d3.select(this).attr('cursor', 'grabbing'); })
+    .on('drag', function(event) {
+      const [mx, my] = s2m(event.x, event.y);
+      const vx = Math.cos(subAngle), vy = Math.sin(subAngle);
+      sParam = (mx * vx + my * vy) / 300;
+      update();
+    })
+    .on('end', function() { d3.select(this).attr('cursor', 'grab'); })
+  );
+
+  // Drag rotation handle
+  rotHandle.call(d3.drag()
+    .on('start', function() { d3.select(this).attr('cursor', 'grabbing'); })
+    .on('drag', function(event) {
+      const [mx, my] = s2m(event.x, event.y);
+      subAngle = Math.atan2(my, mx);
+      update();
+    })
+    .on('end', function() { d3.select(this).attr('cursor', 'grab'); })
+  );
+
+  update();
+})();
+</script>
+</body>
+</html>

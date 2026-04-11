@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Shape of Uncertainty</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  h1 {
+    font-size: 1.6rem;
+    font-weight: 300;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+    color: #ccc;
+  }
+  .subtitle {
+    font-size: 0.95rem;
+    color: #888;
+    margin-bottom: 18px;
+    text-align: center;
+    max-width: 700px;
+  }
+  .main-container {
+    display: flex;
+    gap: 0;
+    background: #16162a;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 30px rgba(0,0,0,0.5);
+  }
+  .canvas-panel { width: 520px; height: 500px; position: relative; }
+  .side-panel {
+    width: 280px; height: 500px; background: #131326;
+    padding: 16px; display: flex; flex-direction: column; gap: 14px;
+  }
+  svg { display: block; shape-rendering: geometricPrecision; }
+  .control-group {
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .control-group label {
+    font-size: 0.78rem; color: #aaa;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .control-group label span.val {
+    color: #e0e0e0; font-weight: 600;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.8rem;
+  }
+  input[type="range"] {
+    width: 100%;
+    accent-color: #4a90d9;
+    cursor: pointer;
+  }
+  .toggle-row {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.82rem; color: #aaa; cursor: pointer;
+    user-select: none;
+  }
+  .toggle-row input { accent-color: #50c878; cursor: pointer; }
+  .readout {
+    display: flex; flex-direction: column; gap: 4px;
+    margin-top: auto;
+    background: #1a1a2e; border-radius: 6px; padding: 10px;
+  }
+  .readout-item {
+    font-size: 0.76rem; color: #888;
+    display: flex; justify-content: space-between;
+  }
+  .readout-item span {
+    color: #e0e0e0; font-weight: 600;
+    font-family: 'Consolas', 'Courier New', monospace;
+  }
+  .section-label {
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 2px;
+    color: #555; margin-top: 4px; margin-bottom: -4px;
+  }
+  .aha-box {
+    background: #1a1a2e; border-left: 3px solid #e6a817;
+    padding: 8px 10px; border-radius: 0 4px 4px 0;
+    font-size: 0.72rem; color: #aaa; line-height: 1.5;
+  }
+  .aha-box strong { color: #e6a817; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<h1>The Shape of Uncertainty</h1>
+<div class="subtitle">The confidence ellipse reveals how eigenvalues of X&#7488;X control estimation precision</div>
+
+<div class="main-container">
+  <div class="canvas-panel">
+    <svg id="canvas" width="520" height="500"></svg>
+  </div>
+  <div class="side-panel">
+    <div class="section-label">Eigenvalues of X&#7488;X</div>
+    <div class="control-group">
+      <label>&#955;&#8321; <span class="val" id="lbl-l1">5.0</span></label>
+      <input type="range" id="sl-l1" min="0.1" max="20" step="0.1" value="5.0"
+        title="First eigenvalue of X&#7488;X &#8212; controls width along first eigenvector">
+    </div>
+    <div class="control-group">
+      <label>&#955;&#8322; <span class="val" id="lbl-l2">5.0</span></label>
+      <input type="range" id="sl-l2" min="0.1" max="20" step="0.1" value="5.0"
+        title="Second eigenvalue of X&#7488;X &#8212; drag toward 0 to see multicollinearity">
+    </div>
+
+    <div class="section-label">Noise &amp; Confidence</div>
+    <div class="control-group">
+      <label>&#963;&#178; (noise variance) <span class="val" id="lbl-s2">1.0</span></label>
+      <input type="range" id="sl-s2" min="0.1" max="5" step="0.1" value="1.0"
+        title="Noise variance &#8212; larger noise inflates the ellipse uniformly">
+    </div>
+    <div class="control-group">
+      <label>Confidence level <span class="val" id="lbl-conf">95%</span></label>
+      <input type="range" id="sl-conf" min="80" max="99" step="1" value="95"
+        title="Confidence level for the ellipse (80% to 99%)">
+    </div>
+
+    <label class="toggle-row">
+      <input type="checkbox" id="chk-marginal" checked>
+      Show marginal intervals
+    </label>
+
+    <div class="aha-box">
+      <strong>Aha:</strong> Drag &#955;&#8322; &#8594; 0 and watch the ellipse flatten into a needle.
+      This is the geometry of <strong>multicollinearity</strong> &#8212; huge uncertainty
+      in one direction. The condition number &#954; tells you how "pancake-like" the ellipse is.
+    </div>
+
+    <div class="readout">
+      <div class="readout-item">&#955;&#8321; <span id="rd-l1">5.0</span></div>
+      <div class="readout-item">&#955;&#8322; <span id="rd-l2">5.0</span></div>
+      <div class="readout-item">&#954; (condition) <span id="rd-kappa">1.00</span></div>
+      <div class="readout-item">Semi-axis 1 <span id="rd-a1">0.00</span></div>
+      <div class="readout-item">Semi-axis 2 <span id="rd-a2">0.00</span></div>
+      <div class="readout-item">&#963; <span id="rd-sigma">1.00</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const W = 520, H = 500;
+  const cx = W / 2, cy = H / 2;
+  const svg = d3.select('#canvas');
+
+  // Defs
+  const defs = svg.append('defs');
+  // Glow filter
+  const filter = defs.append('filter').attr('id', 'glow');
+  filter.append('feGaussianBlur').attr('stdDeviation', 3).attr('result', 'blur');
+  filter.append('feMerge').selectAll('feMergeNode').data(['blur', 'SourceGraphic'])
+    .enter().append('feMergeNode').attr('in', d => d);
+
+  // Grid
+  const gridG = svg.append('g');
+  const axisG = svg.append('g');
+  const ellipseG = svg.append('g');
+  const eigenG = svg.append('g');
+  const marginalG = svg.append('g');
+  const dotG = svg.append('g');
+  const labelG = svg.append('g');
+
+  // Beta-hat position (fixed)
+  const bHat = [0, 0]; // at center in coefficient space
+
+  // Scale: coefficient space -> pixel
+  const pixPerUnit = 40;
+  function toP(bx, by) {
+    return [cx + bx * pixPerUnit, cy - by * pixPerUnit];
+  }
+
+  // Chi-squared quantile (2 dof) via inverse CDF
+  // For chi2 with k=2: F(x) = 1 - exp(-x/2), so x = -2 ln(1-p)
+  function chi2Quantile2(p) {
+    return -2 * Math.log(1 - p);
+  }
+
+  // Draw grid
+  function drawGrid() {
+    gridG.selectAll('*').remove();
+    const range = 6;
+    for (let i = -range; i <= range; i++) {
+      const p1 = toP(i, -range), p2 = toP(i, range);
+      gridG.append('line').attr('x1', p1[0]).attr('y1', p1[1])
+        .attr('x2', p2[0]).attr('y2', p2[1])
+        .attr('stroke', '#222240').attr('stroke-width', 0.5);
+      const p3 = toP(-range, i), p4 = toP(range, i);
+      gridG.append('line').attr('x1', p3[0]).attr('y1', p3[1])
+        .attr('x2', p4[0]).attr('y2', p4[1])
+        .attr('stroke', '#222240').attr('stroke-width', 0.5);
+    }
+  }
+
+  function drawAxes() {
+    axisG.selectAll('*').remove();
+    const range = 6;
+    // x-axis
+    const ax1 = toP(-range, 0), ax2 = toP(range, 0);
+    axisG.append('line').attr('x1', ax1[0]).attr('y1', ax1[1])
+      .attr('x2', ax2[0]).attr('y2', ax2[1])
+      .attr('stroke', '#888').attr('stroke-width', 1);
+    // y-axis
+    const ay1 = toP(0, -range), ay2 = toP(0, range);
+    axisG.append('line').attr('x1', ay1[0]).attr('y1', ay1[1])
+      .attr('x2', ay2[0]).attr('y2', ay2[1])
+      .attr('stroke', '#888').attr('stroke-width', 1);
+    // Labels
+    axisG.append('text').attr('x', ax2[0] - 5).attr('y', ax2[1] + 18)
+      .text('\u03B2\u2081').attr('fill', '#888').attr('font-size', '14px');
+    axisG.append('text').attr('x', ay2[0] + 10).attr('y', ay2[1] + 12)
+      .text('\u03B2\u2082').attr('fill', '#888').attr('font-size', '14px');
+    // Tick marks
+    for (let i = -range; i <= range; i++) {
+      if (i === 0) continue;
+      const tx = toP(i, 0);
+      axisG.append('line').attr('x1', tx[0]).attr('y1', tx[1]-3)
+        .attr('x2', tx[0]).attr('y2', tx[1]+3)
+        .attr('stroke', '#666').attr('stroke-width', 0.8);
+      const ty = toP(0, i);
+      axisG.append('line').attr('x1', ty[0]-3).attr('y1', ty[1])
+        .attr('x2', ty[0]+3).attr('y2', ty[1])
+        .attr('stroke', '#666').attr('stroke-width', 0.8);
+    }
+  }
+
+  drawGrid();
+  drawAxes();
+
+  // Rotation angle for eigenvectors (fixed at 30 degrees for visual appeal)
+  const theta = Math.PI / 6;
+  const cosT = Math.cos(theta), sinT = Math.sin(theta);
+
+  function update() {
+    const l1 = +document.getElementById('sl-l1').value;
+    const l2 = +document.getElementById('sl-l2').value;
+    const s2 = +document.getElementById('sl-s2').value;
+    const conf = +document.getElementById('sl-conf').value / 100;
+    const showMarginal = document.getElementById('chk-marginal').checked;
+
+    // Update labels
+    document.getElementById('lbl-l1').textContent = l1.toFixed(1);
+    document.getElementById('lbl-l2').textContent = l2.toFixed(1);
+    document.getElementById('lbl-s2').textContent = s2.toFixed(1);
+    document.getElementById('lbl-conf').textContent = (conf * 100).toFixed(0) + '%';
+
+    // Covariance of beta-hat: sigma^2 * (X^TX)^{-1}
+    // Eigenvalues of cov = sigma^2 / lambda_i
+    // Semi-axes of confidence ellipse = sqrt(chi2_quantile * sigma^2 / lambda_i)
+    const chi2q = chi2Quantile2(conf);
+    const a1 = Math.sqrt(chi2q * s2 / l1); // semi-axis along eigenvector 1
+    const a2 = Math.sqrt(chi2q * s2 / l2); // semi-axis along eigenvector 2
+
+    const kappa = Math.max(l1, l2) / Math.min(l1, l2);
+
+    // Readouts
+    document.getElementById('rd-l1').textContent = l1.toFixed(1);
+    document.getElementById('rd-l2').textContent = l2.toFixed(1);
+    document.getElementById('rd-kappa').textContent = kappa.toFixed(2);
+    document.getElementById('rd-a1').textContent = a1.toFixed(3);
+    document.getElementById('rd-a2').textContent = a2.toFixed(3);
+    document.getElementById('rd-sigma').textContent = Math.sqrt(s2).toFixed(3);
+
+    // Draw ellipse
+    drawEllipse(a1, a2);
+    drawEigenvectors(a1, a2);
+    drawDot();
+    if (showMarginal) drawMarginal(a1, a2, s2, chi2q, l1, l2);
+    else marginalG.selectAll('*').remove();
+  }
+
+  function drawEllipse(a1, a2) {
+    ellipseG.selectAll('*').remove();
+
+    // Generate ellipse points
+    // Ellipse in eigenvector coordinates, rotated by theta
+    const nPts = 200;
+    const pts = [];
+    for (let i = 0; i <= nPts; i++) {
+      const t = (i / nPts) * 2 * Math.PI;
+      // Point in eigenvector frame
+      const ex = a1 * Math.cos(t);
+      const ey = a2 * Math.sin(t);
+      // Rotate to standard frame
+      const bx = cosT * ex - sinT * ey;
+      const by = sinT * ex + cosT * ey;
+      pts.push(toP(bx, by));
+    }
+
+    const lineGen = d3.line().x(d => d[0]).y(d => d[1]).curve(d3.curveLinearClosed);
+
+    // Fill
+    ellipseG.append('path')
+      .datum(pts)
+      .attr('d', lineGen)
+      .attr('fill', '#9b59b6')
+      .attr('fill-opacity', 0.08)
+      .attr('stroke', '#9b59b6')
+      .attr('stroke-width', 2)
+      .attr('stroke-opacity', 0.8)
+      .style('filter', 'url(#glow)');
+  }
+
+  function drawEigenvectors(a1, a2) {
+    eigenG.selectAll('*').remove();
+
+    // Eigenvector 1 direction (rotated)
+    const ev1x = cosT, ev1y = sinT;
+    const ev2x = -sinT, ev2y = cosT;
+
+    // Draw dashed lines through center along eigenvector directions
+    const len = 6;
+    [[ev1x, ev1y, a1, '1'], [ev2x, ev2y, a2, '2']].forEach(([dx, dy, a, label]) => {
+      const p1 = toP(-dx * len, -dy * len);
+      const p2 = toP(dx * len, dy * len);
+      eigenG.append('line')
+        .attr('x1', p1[0]).attr('y1', p1[1])
+        .attr('x2', p2[0]).attr('y2', p2[1])
+        .attr('stroke', '#4a90d9').attr('stroke-width', 1)
+        .attr('stroke-dasharray', '5,4').attr('stroke-opacity', 0.5);
+
+      // Semi-axis endpoint
+      const ep = toP(dx * a, dy * a);
+      eigenG.append('circle').attr('cx', ep[0]).attr('cy', ep[1]).attr('r', 3)
+        .attr('fill', '#4a90d9').attr('opacity', 0.7);
+
+      // Label
+      const lp = toP(dx * (a + 0.4), dy * (a + 0.4));
+      eigenG.append('text').attr('x', lp[0]).attr('y', lp[1])
+        .text('a' + label + '=' + a.toFixed(2))
+        .attr('fill', '#4a90d9').attr('font-size', '10px')
+        .attr('text-anchor', 'middle').attr('opacity', 0.8);
+
+      // Draw semi-axis line from center to endpoint
+      const cp = toP(0, 0);
+      eigenG.append('line')
+        .attr('x1', cp[0]).attr('y1', cp[1])
+        .attr('x2', ep[0]).attr('y2', ep[1])
+        .attr('stroke', '#4a90d9').attr('stroke-width', 1.5).attr('stroke-opacity', 0.6);
+    });
+  }
+
+  function drawDot() {
+    dotG.selectAll('*').remove();
+    const p = toP(0, 0);
+    dotG.append('circle').attr('cx', p[0]).attr('cy', p[1]).attr('r', 5)
+      .attr('fill', '#e6a817').style('filter', 'url(#glow)');
+    dotG.append('text').attr('x', p[0] + 10).attr('y', p[1] - 8)
+      .text('\u03B2\u0302').attr('fill', '#e6a817').attr('font-size', '14px').attr('font-weight', 600);
+  }
+
+  function drawMarginal(a1, a2, s2, chi2q, l1, l2) {
+    marginalG.selectAll('*').remove();
+
+    // Marginal variance for beta_1 and beta_2:
+    // Var(beta_i) = sigma^2 * [(X^TX)^{-1}]_{ii}
+    // (X^TX)^{-1} in rotated frame: R diag(1/l1, 1/l2) R^T
+    // Element [0,0] = cos^2(theta)/l1 + sin^2(theta)/l2
+    // Element [1,1] = sin^2(theta)/l1 + cos^2(theta)/l2
+    const var1 = s2 * (cosT*cosT/l1 + sinT*sinT/l2);
+    const var2 = s2 * (sinT*sinT/l1 + cosT*cosT/l2);
+
+    // For confidence interval: beta_hat_i +/- z_{alpha/2} * sqrt(var_i)
+    // Using chi2 with 1 dof for individual CIs, but to match the ellipse level
+    // we'll use the normal quantile corresponding to the confidence level
+    const conf = +document.getElementById('sl-conf').value / 100;
+    const zAlpha2 = -normalQuantile((1 - conf) / 2);
+    const hw1 = zAlpha2 * Math.sqrt(var1);
+    const hw2 = zAlpha2 * Math.sqrt(var2);
+
+    // Beta1 marginal: horizontal segment on x-axis
+    const m1L = toP(-hw1, 0), m1R = toP(hw1, 0);
+    marginalG.append('line')
+      .attr('x1', m1L[0]).attr('y1', m1L[1])
+      .attr('x2', m1R[0]).attr('y2', m1R[1])
+      .attr('stroke', '#50c878').attr('stroke-width', 4).attr('stroke-opacity', 0.7)
+      .attr('stroke-linecap', 'round');
+    // Endcaps
+    [m1L, m1R].forEach(p => {
+      marginalG.append('line')
+        .attr('x1', p[0]).attr('y1', p[1]-6)
+        .attr('x2', p[0]).attr('y2', p[1]+6)
+        .attr('stroke', '#50c878').attr('stroke-width', 2).attr('stroke-opacity', 0.7);
+    });
+    marginalG.append('text').attr('x', m1R[0]+6).attr('y', m1R[1]+4)
+      .text('\u00B1' + hw1.toFixed(2))
+      .attr('fill', '#50c878').attr('font-size', '9px').attr('opacity', 0.8);
+
+    // Beta2 marginal: vertical segment on y-axis
+    const m2B = toP(0, -hw2), m2T = toP(0, hw2);
+    marginalG.append('line')
+      .attr('x1', m2B[0]).attr('y1', m2B[1])
+      .attr('x2', m2T[0]).attr('y2', m2T[1])
+      .attr('stroke', '#50c878').attr('stroke-width', 4).attr('stroke-opacity', 0.7)
+      .attr('stroke-linecap', 'round');
+    [m2B, m2T].forEach(p => {
+      marginalG.append('line')
+        .attr('x1', p[0]-6).attr('y1', p[1])
+        .attr('x2', p[0]+6).attr('y2', p[1])
+        .attr('stroke', '#50c878').attr('stroke-width', 2).attr('stroke-opacity', 0.7);
+    });
+    marginalG.append('text').attr('x', m2T[0]+8).attr('y', m2T[1]+4)
+      .text('\u00B1' + hw2.toFixed(2))
+      .attr('fill', '#50c878').attr('font-size', '9px').attr('opacity', 0.8);
+
+    // Projection lines from ellipse to axes (dotted)
+    // Show the "shadow" of the ellipse on each axis
+    // Max extent of ellipse on beta1 axis = sqrt of element [0,0] of cov * chi2q
+    // = sqrt(chi2q * var1) -- but wait, that's the chi2 2-dof version
+    // Actually we want the projection of the 2D ellipse onto each axis
+    const projHW1 = Math.sqrt(chi2q * var1);
+    const projHW2 = Math.sqrt(chi2q * var2);
+
+    // Light projection rectangles
+    const pr1L = toP(-projHW1, 0), pr1R = toP(projHW1, 0);
+    [[-projHW1, '#50c878'], [projHW1, '#50c878']].forEach(([x, c]) => {
+      const pp = toP(x, 0);
+      marginalG.append('line')
+        .attr('x1', pp[0]).attr('y1', cy - 180)
+        .attr('x2', pp[0]).attr('y2', cy + 180)
+        .attr('stroke', c).attr('stroke-width', 0.5)
+        .attr('stroke-dasharray', '2,4').attr('stroke-opacity', 0.3);
+    });
+    [[-projHW2, '#50c878'], [projHW2, '#50c878']].forEach(([y, c]) => {
+      const pp = toP(0, y);
+      marginalG.append('line')
+        .attr('x1', cx - 200).attr('y1', pp[1])
+        .attr('x2', cx + 200).attr('y2', pp[1])
+        .attr('stroke', c).attr('stroke-width', 0.5)
+        .attr('stroke-dasharray', '2,4').attr('stroke-opacity', 0.3);
+    });
+  }
+
+  // Normal quantile (Rational approximation, Abramowitz & Stegun 26.2.23)
+  function normalQuantile(p) {
+    if (p <= 0) return -Infinity;
+    if (p >= 1) return Infinity;
+    if (p > 0.5) return -normalQuantile(1 - p);
+    const t = Math.sqrt(-2 * Math.log(p));
+    const c0 = 2.515517, c1 = 0.802853, c2 = 0.010328;
+    const d1 = 1.432788, d2 = 0.189269, d3 = 0.001308;
+    return -(t - (c0 + c1*t + c2*t*t) / (1 + d1*t + d2*t*t + d3*t*t*t));
+  }
+
+  // Event listeners
+  ['sl-l1', 'sl-l2', 'sl-s2', 'sl-conf'].forEach(id => {
+    document.getElementById(id).addEventListener('input', update);
+  });
+  document.getElementById('chk-marginal').addEventListener('change', update);
+
+  update();
+})();
+</script>
+</body>
+</html>

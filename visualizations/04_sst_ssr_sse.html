@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SST = SSR + SSE — A Right Triangle</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  h1 {
+    font-size: 1.6rem;
+    font-weight: 300;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+    color: #ffffff;
+  }
+  .subtitle {
+    font-size: 0.95rem;
+    color: #8888aa;
+    margin-bottom: 18px;
+  }
+  .canvas-wrap {
+    position: relative;
+    background: #12122a;
+    border: 1px solid #2a2a4a;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  svg { display: block; }
+  .controls {
+    display: flex;
+    gap: 14px;
+    margin-top: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .slider-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .slider-group label {
+    font-size: 0.88rem;
+    color: #9999bb;
+  }
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 200px;
+    height: 5px;
+    background: #2a2a4e;
+    border-radius: 3px;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #4a90d9;
+    cursor: pointer;
+    border: 2px solid #1a1a2e;
+  }
+  button, .toggle-btn {
+    background: #2a2a4e;
+    color: #c0c0e0;
+    border: 1px solid #4a4a6e;
+    border-radius: 6px;
+    padding: 8px 20px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    user-select: none;
+  }
+  button:hover, .toggle-btn:hover {
+    background: #3a3a5e;
+    border-color: #6a6a8e;
+  }
+  .toggle-btn.active {
+    background: #2a3a4e;
+    border-color: #5a8aae;
+    color: #a0d0f0;
+  }
+  .readout {
+    margin-top: 14px;
+    font-size: 0.88rem;
+    color: #9999bb;
+    text-align: center;
+    line-height: 1.7;
+    font-variant-numeric: tabular-nums;
+  }
+  .readout span { color: #ccccee; font-weight: 500; }
+  .legend {
+    display: flex;
+    gap: 18px;
+    margin-top: 10px;
+    font-size: 0.82rem;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-swatch { width: 14px; height: 3px; border-radius: 2px; }
+  .tooltip-box {
+    position: absolute;
+    background: #22224a;
+    border: 1px solid #4a4a7a;
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 0.78rem;
+    color: #ccccee;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+
+<h1>SST = SSR + SSE &mdash; A Right Triangle</h1>
+<p class="subtitle">The Pythagorean theorem is the geometry behind the sum-of-squares decomposition</p>
+
+<div class="canvas-wrap" id="canvas-wrap">
+  <svg id="viz" width="800" height="500"></svg>
+  <div class="tooltip-box" id="tooltip"></div>
+</div>
+
+<div class="controls">
+  <div class="slider-group">
+    <label>Model quality (&#952;):</label>
+    <input type="range" id="slider-theta" min="2" max="88" value="35" title="Sweep the angle between y&#x0303; and y&#x0302;">
+    <span id="theta-val" style="color:#ccccee;font-size:0.88rem;min-width:40px">35°</span>
+  </div>
+  <div class="toggle-btn" id="btn-squares" title="Show Pythagorean area squares on each side">Show area squares</div>
+  <button id="btn-reset" title="Reset to default position">Reset</button>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-swatch" style="background:#e6a817"></div> y&#x0303; (SST = \u2016y&#x0303;\u2016\u00B2)</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#50c878"></div> y&#x0302;&#x0303; (SSR = \u2016y&#x0302;&#x0303;\u2016\u00B2)</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#e74c3c"></div> e (SSE = \u2016e\u2016\u00B2)</div>
+</div>
+
+<div class="readout" id="readout"></div>
+
+<script>
+(function() {
+  const W = 800, H = 500;
+  // Triangle area: left portion (0..560), bar chart: right portion (580..790)
+  const triOx = 260, triOy = 390; // origin of the right triangle
+  const barX = 610, barY = 40, barW = 50, barH = 400;
+
+  const svg = d3.select('#viz');
+  const tooltip = document.getElementById('tooltip');
+  const wrap = document.getElementById('canvas-wrap');
+
+  // State
+  let theta = 35 * Math.PI / 180; // angle at origin between y_tilde and yhat_tilde
+  let totalLen = 280; // length of hypotenuse (y_tilde)
+  let showSquares = false;
+  let tipPos = null; // draggable tip position of y_tilde, null = use theta/totalLen
+
+  // Derived geometry — right triangle at origin
+  // y_tilde = hypotenuse (from origin to tip)
+  // yhat_tilde = adjacent (projection onto subspace line = horizontal here)
+  // e = opposite (vertical, perpendicular)
+  // The right angle is between yhat_tilde and e
+
+  function getTriangle() {
+    const adjLen = totalLen * Math.cos(theta);
+    const oppLen = totalLen * Math.sin(theta);
+    // Adjacent goes along angle 0 (rightward), opposite goes up
+    // y_tilde tip
+    const tip = [triOx + adjLen, triOy - oppLen];
+    // yhat_tilde tip (foot of perpendicular)
+    const foot = [triOx + adjLen, triOy];
+    return {
+      origin: [triOx, triOy],
+      tip: tip,
+      foot: foot,
+      adjLen: adjLen,
+      oppLen: oppLen,
+      hypLen: totalLen,
+      SSR: adjLen * adjLen,
+      SSE: oppLen * oppLen,
+      SST: totalLen * totalLen,
+    };
+  }
+
+  // Background grid
+  const gridG = svg.append('g').attr('opacity', 0.06);
+  for (let x = 0; x <= 560; x += 40) {
+    gridG.append('line').attrs({x1:x,y1:0,x2:x,y2:H,stroke:'#aaaaff','stroke-width':'0.5'});
+  }
+  for (let y = 0; y <= H; y += 40) {
+    gridG.append('line').attrs({x1:0,y1:y,x2:560,y2:y,stroke:'#aaaaff','stroke-width':'0.5'});
+  }
+
+  // D3 doesn't have attrs by default in v7, add a polyfill
+  d3.selection.prototype.attrs = function(obj) {
+    for (const [k,v] of Object.entries(obj)) this.attr(k, v);
+    return this;
+  };
+
+  // Defs
+  svg.append('defs').html(`
+    <marker id="arr-gold" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#e6a817"/>
+    </marker>
+    <marker id="arr-green" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#50c878"/>
+    </marker>
+    <marker id="arr-red" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#e74c3c"/>
+    </marker>
+  `);
+
+  // Rebuild grid
+  gridG.selectAll('*').remove();
+  for (let x = 0; x <= 560; x += 40) {
+    gridG.append('line').attr('x1',x).attr('y1',0).attr('x2',x).attr('y2',H).attr('stroke','#aaaaff').attr('stroke-width','0.5');
+  }
+  for (let y = 0; y <= H; y += 40) {
+    gridG.append('line').attr('x1',0).attr('y1',y).attr('x2',560).attr('y2',y).attr('stroke','#aaaaff').attr('stroke-width','0.5');
+  }
+
+  // Separator line
+  svg.append('line').attr('x1',570).attr('y1',20).attr('x2',570).attr('y2',H-20)
+    .attr('stroke','#2a2a4a').attr('stroke-width','1');
+
+  // Bar chart area label
+  svg.append('text').attr('x', barX + barW/2).attr('y', 28)
+    .attr('text-anchor','middle').attr('fill','#7777aa').attr('font-size','13')
+    .text('Decomposition');
+
+  // SVG groups for layering
+  const squaresG = svg.append('g').attr('class','squares');
+  const triG = svg.append('g').attr('class','triangle');
+  const labelsG = svg.append('g').attr('class','labels');
+  const barG = svg.append('g').attr('class','barchart');
+
+  // Origin dot
+  triG.append('circle').attr('cx', triOx).attr('cy', triOy).attr('r', 3).attr('fill','#666688');
+  labelsG.append('text').attr('x', triOx - 16).attr('y', triOy + 18)
+    .attr('fill','#666688').attr('font-size','12').text('0');
+
+  // Subspace baseline hint
+  const baseLine = triG.append('line')
+    .attr('stroke','#4a90d9').attr('stroke-width','1.5').attr('opacity','0.3');
+
+  // Right angle mark
+  const raPath = triG.append('path')
+    .attr('fill','none').attr('stroke','#8888cc').attr('stroke-width','1.2');
+
+  // Angle arc
+  const arcPath = triG.append('path')
+    .attr('fill','rgba(74,144,217,0.12)').attr('stroke','#4a90d9').attr('stroke-width','1.2');
+
+  // Angle label
+  const arcLabel = labelsG.append('text')
+    .attr('fill','#4a90d9').attr('font-size','13');
+
+  // Triangle edges
+  const edgeHyp = triG.append('line')
+    .attr('stroke','#e6a817').attr('stroke-width','2.5').attr('stroke-linecap','round')
+    .attr('marker-end','url(#arr-gold)');
+  const edgeAdj = triG.append('line')
+    .attr('stroke','#50c878').attr('stroke-width','2.5').attr('stroke-linecap','round')
+    .attr('marker-end','url(#arr-green)');
+  const edgeOpp = triG.append('line')
+    .attr('stroke','#e74c3c').attr('stroke-width','2').attr('stroke-linecap','round')
+    .attr('stroke-dasharray','8,5').attr('marker-end','url(#arr-red)');
+
+  // Labels for edges
+  const lblHyp = labelsG.append('text').attr('fill','#e6a817').attr('font-size','14').attr('font-weight','500');
+  const lblAdj = labelsG.append('text').attr('fill','#50c878').attr('font-size','14').attr('font-weight','500');
+  const lblOpp = labelsG.append('text').attr('fill','#e74c3c').attr('font-size','13');
+
+  // Draggable tip handle
+  const tipHandle = triG.append('circle')
+    .attr('r', 12).attr('fill','#e6a817').attr('fill-opacity', 0.2)
+    .attr('stroke','#e6a817').attr('stroke-width','1.5')
+    .attr('cursor','grab');
+
+  // Area squares (Pythagorean)
+  const sqHyp = squaresG.append('rect').attr('fill','rgba(230,168,23,0.1)').attr('stroke','#e6a817').attr('stroke-width','1').attr('opacity','0');
+  const sqAdj = squaresG.append('rect').attr('fill','rgba(80,200,120,0.1)').attr('stroke','#50c878').attr('stroke-width','1').attr('opacity','0');
+  const sqOpp = squaresG.append('rect').attr('fill','rgba(231,76,60,0.1)').attr('stroke','#e74c3c').attr('stroke-width','1').attr('opacity','0');
+
+  // Area square labels
+  const sqLblHyp = labelsG.append('text').attr('fill','#e6a817').attr('font-size','11').attr('text-anchor','middle').attr('opacity','0');
+  const sqLblAdj = labelsG.append('text').attr('fill','#50c878').attr('font-size','11').attr('text-anchor','middle').attr('opacity','0');
+  const sqLblOpp = labelsG.append('text').attr('fill','#e74c3c').attr('font-size','11').attr('text-anchor','middle').attr('opacity','0');
+
+  // Bar chart elements
+  const barSSE = barG.append('rect').attr('fill','#e74c3c').attr('fill-opacity','0.6').attr('rx',3);
+  const barSSR = barG.append('rect').attr('fill','#50c878').attr('fill-opacity','0.6').attr('rx',3);
+  const barOutline = barG.append('rect').attr('fill','none').attr('stroke','#e6a817').attr('stroke-width','2').attr('rx',3);
+
+  const barLblSSR = barG.append('text').attr('fill','#50c878').attr('font-size','12').attr('text-anchor','middle');
+  const barLblSSE = barG.append('text').attr('fill','#e74c3c').attr('font-size','12').attr('text-anchor','middle');
+  const barLblSST = barG.append('text').attr('fill','#e6a817').attr('font-size','12').attr('text-anchor','middle');
+
+  function render() {
+    const tri = getTriangle();
+    const {origin, tip, foot, adjLen, oppLen, hypLen, SSR, SSE, SST} = tri;
+
+    // Baseline
+    baseLine.attr('x1', triOx - 30).attr('y1', triOy).attr('x2', triOx + 500).attr('y2', triOy);
+
+    // Edges
+    edgeHyp.attr('x1', origin[0]).attr('y1', origin[1]).attr('x2', tip[0]).attr('y2', tip[1]);
+    edgeAdj.attr('x1', origin[0]).attr('y1', origin[1]).attr('x2', foot[0]).attr('y2', foot[1]);
+    edgeOpp.attr('x1', foot[0]).attr('y1', foot[1]).attr('x2', tip[0]).attr('y2', tip[1]);
+
+    // Handle
+    tipHandle.attr('cx', tip[0]).attr('cy', tip[1]);
+
+    // Right angle mark at foot
+    if (oppLen > 20 && adjLen > 20) {
+      const sz = 14;
+      raPath.attr('d', `M${foot[0]},${foot[1]-sz} L${foot[0]-sz},${foot[1]-sz} L${foot[0]-sz},${foot[1]}`)
+        .attr('opacity', 0.6);
+    } else {
+      raPath.attr('opacity', 0);
+    }
+
+    // Angle arc at origin
+    const arcR = 35;
+    const startAngle = 0; // along positive x
+    const endAngle = -theta; // upward (negative in SVG)
+    const ax1 = origin[0] + arcR;
+    const ay1 = origin[1];
+    const ax2 = origin[0] + arcR * Math.cos(theta);
+    const ay2 = origin[1] - arcR * Math.sin(theta);
+    const largeArc = theta > Math.PI ? 1 : 0;
+    arcPath.attr('d', `M${origin[0]},${origin[1]} L${ax1},${ay1} A${arcR},${arcR} 0 ${largeArc} 0 ${ax2},${ay2} Z`);
+
+    const labelR = arcR + 16;
+    const labelAngle = theta / 2;
+    arcLabel.attr('x', origin[0] + labelR * Math.cos(labelAngle))
+      .attr('y', origin[1] - labelR * Math.sin(labelAngle) + 4)
+      .text('\u03B8');
+
+    // Edge labels
+    const hypMid = [(origin[0]+tip[0])/2, (origin[1]+tip[1])/2];
+    lblHyp.attr('x', hypMid[0] - 18).attr('y', hypMid[1] - 12).text('y\u0303');
+
+    lblAdj.attr('x', (origin[0]+foot[0])/2).attr('y', origin[1] + 22)
+      .text('y\u0302\u0303');
+
+    const oppMid = [(foot[0]+tip[0])/2, (foot[1]+tip[1])/2];
+    lblOpp.attr('x', oppMid[0] + 12).attr('y', oppMid[1]).text('e');
+
+    // Area squares
+    const sqOpac = showSquares ? 0.8 : 0;
+    const sqTrans = 'opacity 0.4s';
+
+    // Hypotenuse square: built on the hypotenuse edge
+    // Direction of hypotenuse
+    const hDir = [(tip[0]-origin[0])/hypLen, (tip[1]-origin[1])/hypLen];
+    const hPerp = [-hDir[1], hDir[0]]; // perpendicular (rotate 90 CCW)
+    // Scale factor so squares are visible but not too big
+    const scaleFactor = Math.min(1, 180 / hypLen);
+    const sHyp = hypLen * scaleFactor;
+    const sAdj = adjLen * scaleFactor;
+    const sOpp = oppLen * scaleFactor;
+
+    // For the Pythagorean squares we draw them properly on each side
+    if (showSquares) {
+      // Hypotenuse square: on the outside of the hypotenuse
+      const hx = origin[0], hy = origin[1];
+      const hPerpOut = [hPerp[0], hPerp[1]]; // pointing outward (left of direction)
+      // Draw as polygon via path
+      sqHyp.attr('opacity', 0); // hide rect, use path instead
+      sqAdj.attr('opacity', 0);
+      sqOpp.attr('opacity', 0);
+
+      // Remove old paths
+      squaresG.selectAll('path').remove();
+      squaresG.selectAll('text.sq-lbl').remove();
+
+      // Hypotenuse square (gold) - outward from triangle
+      const hp0 = origin, hp1 = tip;
+      const hp2 = [tip[0] + hPerp[0]*hypLen, tip[1] + hPerp[1]*hypLen];
+      const hp3 = [origin[0] + hPerp[0]*hypLen, origin[1] + hPerp[1]*hypLen];
+      squaresG.append('path')
+        .attr('d', `M${hp0[0]},${hp0[1]} L${hp1[0]},${hp1[1]} L${hp2[0]},${hp2[1]} L${hp3[0]},${hp3[1]} Z`)
+        .attr('fill','rgba(230,168,23,0.08)').attr('stroke','#e6a817').attr('stroke-width','1')
+        .attr('opacity', sqOpac).style('transition', sqTrans);
+      // Label
+      const hCenter = [(hp0[0]+hp1[0]+hp2[0]+hp3[0])/4, (hp0[1]+hp1[1]+hp2[1]+hp3[1])/4];
+      squaresG.append('text').attr('class','sq-lbl')
+        .attr('x', hCenter[0]).attr('y', hCenter[1]+4)
+        .attr('text-anchor','middle').attr('fill','#e6a817').attr('font-size','11')
+        .attr('opacity', sqOpac).text('SST');
+
+      // Adjacent square (green) - below baseline
+      const ap0 = origin, ap1 = foot;
+      const ap2 = [foot[0], foot[1] + adjLen];
+      const ap3 = [origin[0], origin[1] + adjLen];
+      squaresG.append('path')
+        .attr('d', `M${ap0[0]},${ap0[1]} L${ap1[0]},${ap1[1]} L${ap2[0]},${ap2[1]} L${ap3[0]},${ap3[1]} Z`)
+        .attr('fill','rgba(80,200,120,0.08)').attr('stroke','#50c878').attr('stroke-width','1')
+        .attr('opacity', sqOpac).style('transition', sqTrans);
+      const aCenter = [(ap0[0]+ap1[0]+ap2[0]+ap3[0])/4, (ap0[1]+ap1[1]+ap2[1]+ap3[1])/4];
+      squaresG.append('text').attr('class','sq-lbl')
+        .attr('x', aCenter[0]).attr('y', aCenter[1]+4)
+        .attr('text-anchor','middle').attr('fill','#50c878').attr('font-size','11')
+        .attr('opacity', sqOpac).text('SSR');
+
+      // Opposite square (red) - to the right of the opposite side
+      const op0 = foot, op1 = tip;
+      const op2 = [tip[0] + oppLen, tip[1]];
+      const op3 = [foot[0] + oppLen, foot[1]];
+      squaresG.append('path')
+        .attr('d', `M${op0[0]},${op0[1]} L${op1[0]},${op1[1]} L${op2[0]},${op2[1]} L${op3[0]},${op3[1]} Z`)
+        .attr('fill','rgba(231,76,60,0.08)').attr('stroke','#e74c3c').attr('stroke-width','1')
+        .attr('opacity', sqOpac).style('transition', sqTrans);
+      const oCenter = [(op0[0]+op1[0]+op2[0]+op3[0])/4, (op0[1]+op1[1]+op2[1]+op3[1])/4];
+      squaresG.append('text').attr('class','sq-lbl')
+        .attr('x', oCenter[0]).attr('y', oCenter[1]+4)
+        .attr('text-anchor','middle').attr('fill','#e74c3c').attr('font-size','11')
+        .attr('opacity', sqOpac).text('SSE');
+    } else {
+      squaresG.selectAll('path').remove();
+      squaresG.selectAll('text.sq-lbl').remove();
+      sqHyp.attr('opacity', 0);
+      sqAdj.attr('opacity', 0);
+      sqOpp.attr('opacity', 0);
+    }
+
+    // Bar chart
+    const R2 = SST > 0 ? SSR / SST : 0;
+    const maxBar = barH;
+    // Normalize so SST fills the bar
+    const ssrH = maxBar * R2;
+    const sseH = maxBar * (1 - R2);
+    const barBottom = barY + barH;
+
+    barSSR.attr('x', barX).attr('y', barBottom - ssrH).attr('width', barW).attr('height', Math.max(ssrH, 1))
+      .transition().duration(80);
+    barSSE.attr('x', barX).attr('y', barY).attr('width', barW).attr('height', Math.max(sseH, 1))
+      .transition().duration(80);
+    barOutline.attr('x', barX).attr('y', barY).attr('width', barW).attr('height', barH);
+
+    barLblSSR.attr('x', barX + barW/2).attr('y', barBottom - ssrH/2 + 4)
+      .text(`SSR: ${SSR.toFixed(0)}`).attr('opacity', ssrH > 20 ? 1 : 0);
+    barLblSSE.attr('x', barX + barW/2).attr('y', barY + sseH/2 + 4)
+      .text(`SSE: ${SSE.toFixed(0)}`).attr('opacity', sseH > 20 ? 1 : 0);
+    barLblSST.attr('x', barX + barW + 8).attr('y', barY + barH/2 + 4)
+      .attr('text-anchor','start').text(`SST: ${SST.toFixed(0)}`);
+
+    // R^2 label on bar
+    barG.selectAll('.r2-label').remove();
+    barG.append('text').attr('class','r2-label')
+      .attr('x', barX + barW/2).attr('y', barBottom + 22)
+      .attr('text-anchor','middle').attr('fill','#aaaacc').attr('font-size','12')
+      .text(`R\u00B2 = ${R2.toFixed(3)}`);
+
+    // Readout
+    const thetaDeg = theta * 180 / Math.PI;
+    document.getElementById('readout').innerHTML =
+      `SST = <span>${SST.toFixed(1)}</span> &nbsp;&nbsp;|&nbsp;&nbsp; ` +
+      `SSR = <span>${SSR.toFixed(1)}</span> &nbsp;&nbsp;|&nbsp;&nbsp; ` +
+      `SSE = <span>${SSE.toFixed(1)}</span> &nbsp;&nbsp;|&nbsp;&nbsp; ` +
+      `SSR + SSE = <span>${(SSR+SSE).toFixed(1)}</span> &nbsp;&nbsp;|&nbsp;&nbsp; ` +
+      `R\u00B2 = SSR/SST = <span>${R2.toFixed(4)}</span> &nbsp;&nbsp;|&nbsp;&nbsp; ` +
+      `\u03B8 = <span>${thetaDeg.toFixed(1)}\u00B0</span>`;
+
+    document.getElementById('theta-val').textContent = thetaDeg.toFixed(0) + '\u00B0';
+  }
+
+  // --- Interactions ---
+
+  // Slider
+  const slider = document.getElementById('slider-theta');
+  slider.addEventListener('input', () => {
+    theta = parseFloat(slider.value) * Math.PI / 180;
+    render();
+  });
+
+  // Toggle squares
+  document.getElementById('btn-squares').addEventListener('click', function() {
+    showSquares = !showSquares;
+    this.classList.toggle('active', showSquares);
+    render();
+  });
+
+  // Reset
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    theta = 35 * Math.PI / 180;
+    totalLen = 280;
+    slider.value = 35;
+    showSquares = false;
+    document.getElementById('btn-squares').classList.remove('active');
+    render();
+  });
+
+  // Drag tip
+  const drag = d3.drag()
+    .on('start', function() { d3.select(this).attr('cursor','grabbing'); })
+    .on('drag', function(event) {
+      const dx = event.x - triOx;
+      const dy = -(event.y - triOy); // convert to math coords (y-up)
+      if (dx < 10) return; // don't let it go behind origin
+      totalLen = Math.sqrt(dx*dx + dy*dy);
+      totalLen = Math.max(60, Math.min(420, totalLen));
+      theta = Math.atan2(Math.max(dy, 0), dx);
+      theta = Math.max(2*Math.PI/180, Math.min(88*Math.PI/180, theta));
+      slider.value = theta * 180 / Math.PI;
+      render();
+    })
+    .on('end', function() { d3.select(this).attr('cursor','grab'); });
+
+  tipHandle.call(drag);
+
+  // Tooltip helpers
+  function addTip(sel, text) {
+    sel.on('mouseenter', function(event) {
+      tooltip.textContent = text;
+      tooltip.style.opacity = '1';
+      const rect = wrap.getBoundingClientRect();
+      tooltip.style.left = (event.clientX - rect.left + 12) + 'px';
+      tooltip.style.top = (event.clientY - rect.top - 28) + 'px';
+    }).on('mouseleave', () => { tooltip.style.opacity = '0'; });
+  }
+  addTip(tipHandle, 'Drag to change y\u0303');
+  addTip(edgeHyp, 'y\u0303 = y \u2212 y\u0304  (centered observations)');
+  addTip(edgeAdj, 'y\u0302\u0303 = y\u0302 \u2212 y\u0304  (centered predictions)');
+  addTip(edgeOpp, 'e = y \u2212 y\u0302  (residuals)');
+
+  render();
+})();
+</script>
+</body>
+</html>

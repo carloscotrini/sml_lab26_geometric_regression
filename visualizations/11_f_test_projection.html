@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Is the Extra Projection Worth It? (F-Test)</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  h1 {
+    font-size: 1.6rem;
+    font-weight: 300;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+    color: #ccc;
+  }
+  .subtitle {
+    font-size: 0.95rem;
+    color: #888;
+    margin-bottom: 18px;
+  }
+  .main-container {
+    display: flex;
+    gap: 0;
+    background: #16162a;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 30px rgba(0,0,0,0.5);
+  }
+  .geo-panel, .stat-panel {
+    position: relative;
+  }
+  .geo-panel { width: 480px; height: 500px; }
+  .stat-panel { width: 320px; height: 500px; background: #131326; }
+  svg { display: block; shape-rendering: geometricPrecision; }
+  .controls {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    margin-top: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .control-group label {
+    font-size: 0.8rem;
+    color: #aaa;
+  }
+  .control-group input[type="range"] {
+    width: 220px;
+    accent-color: #e6a817;
+    cursor: pointer;
+  }
+  .btn {
+    padding: 8px 18px;
+    border: 1px solid #4a90d9;
+    background: transparent;
+    color: #4a90d9;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+  }
+  .btn:hover {
+    background: #4a90d920;
+  }
+  .readout {
+    display: flex;
+    gap: 16px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .readout-item {
+    font-size: 0.78rem;
+    color: #aaa;
+    background: #16162a;
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+  .readout-item span {
+    color: #e0e0e0;
+    font-weight: 600;
+    font-family: 'Consolas', 'Courier New', monospace;
+  }
+  .panel-title {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #666;
+    text-align: center;
+    padding-top: 12px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Is the Extra Projection Worth It?</h1>
+<div class="subtitle">The F-test measures whether extra predictors capture real signal or just noise</div>
+
+<div class="main-container">
+  <div class="geo-panel">
+    <div class="panel-title">Geometric View</div>
+    <svg id="geo" width="480" height="488"></svg>
+  </div>
+  <div class="stat-panel">
+    <div class="panel-title">F-Statistic Decomposition</div>
+    <svg id="stat" width="320" height="488"></svg>
+  </div>
+</div>
+
+<div class="controls">
+  <div class="control-group">
+    <label>Signal strength of extra predictors</label>
+    <input type="range" id="signal-slider" min="0" max="100" value="0" title="Controls how much extra signal the full model captures beyond the restricted model">
+  </div>
+  <button class="btn" id="random-btn" title="Generate random data under H&#8320; (no extra signal)">Random y under H&#8320;</button>
+</div>
+
+<div class="readout">
+  <div class="readout-item">SSE_R = <span id="rd-sser">0</span></div>
+  <div class="readout-item">SSE = <span id="rd-sse">0</span></div>
+  <div class="readout-item">q = <span id="rd-q">2</span></div>
+  <div class="readout-item">n-p = <span id="rd-nmp">7</span></div>
+  <div class="readout-item">F = <span id="rd-f">0</span></div>
+  <div class="readout-item">p-value = <span id="rd-pval">1.000</span></div>
+</div>
+
+<script>
+(function() {
+  // Parameters
+  const n = 12, p = 5, q = 2;
+  const df1 = q, df2 = n - p;
+
+  // Isometric helpers
+  const cx = 220, cy = 280;
+  const scale = 1.3;
+  function iso(x3, y3, z3) {
+    const ix = (x3 - y3) * Math.cos(Math.PI/6) * scale;
+    const iy = -(x3 + y3) * Math.sin(Math.PI/6) * scale - z3 * scale;
+    return [cx + ix, cy + iy];
+  }
+
+  // State
+  let signal = 0;
+  let randomOffset = 0;
+  let animating = false;
+
+  // Geometric model
+  function computeScene(sig, rndOff) {
+    const t = sig / 100;
+    // y direction (in 3D conceptual space)
+    const yLen = 160;
+    // Restricted projection: varies slightly with random offset
+    const baseRestricted = 80 + rndOff * 0.3;
+    // Full projection picks up extra signal
+    const extraSignal = t * 70 + Math.abs(rndOff) * 0.15;
+
+    const yr_len = Math.max(10, baseRestricted);
+    const yf_len = Math.max(yr_len + 1, baseRestricted + extraSignal);
+    const gap_len = yf_len - yr_len;
+    const residual_len = Math.sqrt(Math.max(1, yLen*yLen - yf_len*yf_len));
+    const residual_r_len = Math.sqrt(Math.max(1, yLen*yLen - yr_len*yr_len));
+
+    // SSE values
+    const sseR = residual_r_len * residual_r_len;
+    const sse = residual_len * residual_len;
+    const gapSq = gap_len * gap_len;
+
+    const F = (sse > 0.01) ? (gapSq / df1) / (sse / df2) : 0;
+
+    return { yr_len, yf_len, gap_len, residual_len, residual_r_len, yLen, sseR, sse, gapSq, F };
+  }
+
+  // F-distribution PDF (using Beta function approximation)
+  function logGamma(z) {
+    // Stirling's series
+    if (z < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * z)) - logGamma(1 - z);
+    z -= 1;
+    const g = 7;
+    const c = [0.99999999999980993,676.5203681218851,-1259.1392167224028,
+      771.32342877765313,-176.61502916214059,12.507343278686905,
+      -0.13857109526572012,9.9843695780195716e-6,1.5056327351493116e-7];
+    let x = c[0];
+    for (let i = 1; i < g + 2; i++) x += c[i] / (z + i);
+    const t2 = z + g + 0.5;
+    return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t2) - t2 + Math.log(x);
+  }
+
+  function fPDF(x, d1, d2) {
+    if (x <= 0) return 0;
+    const lnPDF = (d1/2)*Math.log(d1) + (d2/2)*Math.log(d2)
+      + ((d1/2)-1)*Math.log(x)
+      - ((d1+d2)/2)*Math.log(d1*x + d2)
+      + logGamma((d1+d2)/2)
+      - logGamma(d1/2) - logGamma(d2/2);
+    return Math.exp(lnPDF);
+  }
+
+  // Regularized incomplete beta via continued fraction
+  function betaCF(a, b, x) {
+    const maxIter = 200;
+    const eps = 1e-14;
+    let qab = a + b, qap = a + 1, qam = a - 1;
+    let c = 1, d = 1 - qab * x / qap;
+    if (Math.abs(d) < 1e-30) d = 1e-30;
+    d = 1 / d;
+    let h = d;
+    for (let m = 1; m <= maxIter; m++) {
+      let m2 = 2 * m;
+      let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+      d = 1 + aa * d; if (Math.abs(d) < 1e-30) d = 1e-30; d = 1/d;
+      c = 1 + aa / c; if (Math.abs(c) < 1e-30) c = 1e-30;
+      h *= d * c;
+      aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+      d = 1 + aa * d; if (Math.abs(d) < 1e-30) d = 1e-30; d = 1/d;
+      c = 1 + aa / c; if (Math.abs(c) < 1e-30) c = 1e-30;
+      let del = d * c;
+      h *= del;
+      if (Math.abs(del - 1) < eps) break;
+    }
+    return h;
+  }
+
+  function betaIncomplete(a, b, x) {
+    if (x <= 0) return 0;
+    if (x >= 1) return 1;
+    const bt = Math.exp(logGamma(a+b) - logGamma(a) - logGamma(b) + a*Math.log(x) + b*Math.log(1-x));
+    if (x < (a + 1) / (a + b + 2)) return bt * betaCF(a, b, x) / a;
+    return 1 - bt * betaCF(b, a, 1-x) / b;
+  }
+
+  function fCDF(x, d1, d2) {
+    if (x <= 0) return 0;
+    return betaIncomplete(d1/2, d2/2, d1*x / (d1*x + d2));
+  }
+
+  function pValue(fVal) {
+    return 1 - fCDF(fVal, df1, df2);
+  }
+
+  // Critical value at alpha=0.05
+  function fCritical(alpha, d1, d2) {
+    let lo = 0, hi = 100;
+    for (let i = 0; i < 100; i++) {
+      const mid = (lo + hi) / 2;
+      if (1 - fCDF(mid, d1, d2) < alpha) hi = mid; else lo = mid;
+    }
+    return (lo + hi) / 2;
+  }
+  const fCrit = fCritical(0.05, df1, df2);
+
+  // =================== GEOMETRIC SVG ===================
+  const geoSvg = d3.select('#geo');
+
+  // Defs for arrowheads
+  const defs = geoSvg.append('defs');
+  function addArrow(id, color) {
+    defs.append('marker').attr('id', id)
+      .attr('viewBox', '0 0 10 6').attr('refX', 10).attr('refY', 3)
+      .attr('markerWidth', 8).attr('markerHeight', 5).attr('orient', 'auto')
+      .append('path').attr('d', 'M0,0 L10,3 L0,6 Z').attr('fill', color);
+  }
+  addArrow('arr-gold', '#e6a817');
+  addArrow('arr-green', '#50c878');
+  addArrow('arr-purple', '#9b59b6');
+  addArrow('arr-red', '#e74c3c');
+  addArrow('arr-gold-gap', '#e6a817');
+
+  // Plane (full column space)
+  const planeGroup = geoSvg.append('g');
+  // Line (restricted subspace)
+  const lineGroup = geoSvg.append('g');
+  // Vectors
+  const vecGroup = geoSvg.append('g');
+
+  // Draw the plane as a parallelogram
+  function drawPlane() {
+    const hw = 140, hh = 90;
+    const corners = [
+      iso(-hw, -hh, 0), iso(hw, -hh, 0),
+      iso(hw, hh, 0), iso(-hw, hh, 0)
+    ];
+    const pathData = `M${corners[0]} L${corners[1]} L${corners[2]} L${corners[3]} Z`;
+    planeGroup.selectAll('*').remove();
+    planeGroup.append('path')
+      .attr('d', pathData)
+      .attr('fill', '#4a90d9')
+      .attr('fill-opacity', 0.10)
+      .attr('stroke', '#4a90d9')
+      .attr('stroke-opacity', 0.3)
+      .attr('stroke-width', 1);
+    // Label
+    const lp = iso(145, 85, 0);
+    planeGroup.append('text').attr('x', lp[0]).attr('y', lp[1])
+      .text('Col(X)').attr('fill', '#4a90d9').attr('font-size', '11px').attr('opacity', 0.7);
+  }
+
+  // Draw restricted subspace as a line through origin
+  function drawRestricted() {
+    const p1 = iso(-160, 0, 0);
+    const p2 = iso(160, 0, 0);
+    lineGroup.selectAll('*').remove();
+    lineGroup.append('line')
+      .attr('x1', p1[0]).attr('y1', p1[1])
+      .attr('x2', p2[0]).attr('y2', p2[1])
+      .attr('stroke', '#9b59b6').attr('stroke-width', 2).attr('stroke-opacity', 0.5);
+    const lp = iso(165, 0, 0);
+    lineGroup.append('text').attr('x', lp[0]).attr('y', lp[1])
+      .text('Col(X_R)').attr('fill', '#9b59b6').attr('font-size', '11px')
+      .attr('opacity', 0.7).attr('text-anchor', 'start');
+  }
+
+  drawPlane();
+  drawRestricted();
+
+  // Origin dot
+  const o = iso(0, 0, 0);
+  geoSvg.append('circle').attr('cx', o[0]).attr('cy', o[1]).attr('r', 3)
+    .attr('fill', '#888');
+  geoSvg.append('text').attr('x', o[0]-14).attr('y', o[1]+4)
+    .text('0').attr('fill', '#888').attr('font-size', '11px');
+
+  function drawVectors(sc) {
+    vecGroup.selectAll('*').remove();
+    const origin = [0, 0, 0];
+
+    // Restricted projection ŷ_R: along x-axis in iso
+    const yrEnd = iso(sc.yr_len, 0, 0);
+    const yrStart = iso(0, 0, 0);
+
+    // Full projection ŷ: along x-axis + some y component for the extra dimensions
+    const yfEnd = iso(sc.yr_len, sc.gap_len * 0.8, 0);
+    const yfStart = iso(0, 0, 0);
+
+    // y vector: full projection + residual (going up in z)
+    const yEnd = iso(sc.yr_len, sc.gap_len * 0.8, sc.residual_len);
+
+    // -- Dashed projection lines --
+    // y down to ŷ (vertical in z)
+    vecGroup.append('line')
+      .attr('x1', yEnd[0]).attr('y1', yEnd[1])
+      .attr('x2', yfEnd[0]).attr('y2', yfEnd[1])
+      .attr('stroke', '#e74c3c').attr('stroke-width', 1.5)
+      .attr('stroke-dasharray', '5,4').attr('stroke-opacity', 0.7);
+
+    // gap: ŷ_R to ŷ (in the plane)
+    if (sc.gap_len > 2) {
+      vecGroup.append('line')
+        .attr('x1', yrEnd[0]).attr('y1', yrEnd[1])
+        .attr('x2', yfEnd[0]).attr('y2', yfEnd[1])
+        .attr('stroke', '#e6a817').attr('stroke-width', 2.5)
+        .attr('stroke-opacity', 0.85)
+        .attr('marker-end', 'url(#arr-gold-gap)');
+      // gap label
+      const gapMid = [(yrEnd[0]+yfEnd[0])/2, (yrEnd[1]+yfEnd[1])/2];
+      vecGroup.append('text').attr('x', gapMid[0]).attr('y', gapMid[1] + 16)
+        .text('y\u0302 \u2212 y\u0302_R').attr('fill', '#e6a817').attr('font-size', '10px')
+        .attr('text-anchor', 'middle').attr('opacity', 0.9);
+    }
+
+    // Vector: y (gold)
+    vecGroup.append('line')
+      .attr('x1', yfStart[0]).attr('y1', yfStart[1])
+      .attr('x2', yEnd[0]).attr('y2', yEnd[1])
+      .attr('stroke', '#e6a817').attr('stroke-width', 2)
+      .attr('marker-end', 'url(#arr-gold)');
+    vecGroup.append('text').attr('x', yEnd[0]+8).attr('y', yEnd[1]-6)
+      .text('y').attr('fill', '#e6a817').attr('font-size', '13px').attr('font-weight', 600);
+
+    // Vector: ŷ (green)
+    vecGroup.append('line')
+      .attr('x1', yfStart[0]).attr('y1', yfStart[1])
+      .attr('x2', yfEnd[0]).attr('y2', yfEnd[1])
+      .attr('stroke', '#50c878').attr('stroke-width', 2)
+      .attr('marker-end', 'url(#arr-green)');
+    vecGroup.append('text').attr('x', yfEnd[0]+6).attr('y', yfEnd[1]+14)
+      .text('y\u0302').attr('fill', '#50c878').attr('font-size', '12px').attr('font-weight', 600);
+
+    // Vector: ŷ_R (purple)
+    vecGroup.append('line')
+      .attr('x1', yrStart[0]).attr('y1', yrStart[1])
+      .attr('x2', yrEnd[0]).attr('y2', yrEnd[1])
+      .attr('stroke', '#9b59b6').attr('stroke-width', 2)
+      .attr('marker-end', 'url(#arr-purple)');
+    vecGroup.append('text').attr('x', yrEnd[0]+6).attr('y', yrEnd[1]-6)
+      .text('y\u0302_R').attr('fill', '#9b59b6').attr('font-size', '12px').attr('font-weight', 600);
+
+    // Residual label
+    const eMid = [(yEnd[0]+yfEnd[0])/2, (yEnd[1]+yfEnd[1])/2];
+    vecGroup.append('text').attr('x', eMid[0]+10).attr('y', eMid[1])
+      .text('e').attr('fill', '#e74c3c').attr('font-size', '12px').attr('font-weight', 600);
+
+    // Right angle marker at ŷ
+    const raSize = 8;
+    vecGroup.append('rect')
+      .attr('x', yfEnd[0]-raSize).attr('y', yfEnd[1]-raSize)
+      .attr('width', raSize).attr('height', raSize)
+      .attr('fill', 'none').attr('stroke', '#888').attr('stroke-width', 0.8)
+      .attr('opacity', 0.5);
+
+    // Dots at key points
+    [[yfEnd, '#50c878'], [yrEnd, '#9b59b6'], [yEnd, '#e6a817']].forEach(([pt, c]) => {
+      vecGroup.append('circle').attr('cx', pt[0]).attr('cy', pt[1]).attr('r', 3.5)
+        .attr('fill', c).attr('opacity', 0.9);
+    });
+  }
+
+  // =================== STATISTICS SVG ===================
+  const statSvg = d3.select('#stat');
+  const barX = 60, barW = 70, barMaxH = 130;
+  const barY0 = 280;
+
+  // F-distribution curve area
+  const fCurveG = statSvg.append('g').attr('transform', 'translate(30, 320)');
+  const fCurveW = 260, fCurveH = 130;
+
+  // Title labels for bars
+  statSvg.append('text').attr('x', barX + barW/2).attr('y', 30)
+    .text('Numerator').attr('fill', '#e6a817').attr('font-size', '10px').attr('text-anchor', 'middle');
+  statSvg.append('text').attr('x', barX + barW + 40 + barW/2).attr('y', 30)
+    .text('Denominator').attr('fill', '#e74c3c').attr('font-size', '10px').attr('text-anchor', 'middle');
+
+  statSvg.append('text').attr('x', barX + barW/2).attr('y', 44)
+    .text('\u2016y\u0302\u2212y\u0302_R\u2016\u00B2/q').attr('fill', '#aaa').attr('font-size', '9px').attr('text-anchor', 'middle');
+  statSvg.append('text').attr('x', barX + barW + 40 + barW/2).attr('y', 44)
+    .text('\u2016e\u2016\u00B2/(n\u2212p)').attr('fill', '#aaa').attr('font-size', '9px').attr('text-anchor', 'middle');
+
+  const numBar = statSvg.append('rect').attr('x', barX).attr('width', barW).attr('rx', 3)
+    .attr('fill', '#e6a817').attr('fill-opacity', 0.7);
+  const denBar = statSvg.append('rect').attr('x', barX + barW + 40).attr('width', barW).attr('rx', 3)
+    .attr('fill', '#e74c3c').attr('fill-opacity', 0.7);
+  const numLabel = statSvg.append('text').attr('x', barX + barW/2).attr('text-anchor', 'middle')
+    .attr('fill', '#e6a817').attr('font-size', '11px').attr('font-weight', 600);
+  const denLabel = statSvg.append('text').attr('x', barX + barW + 40 + barW/2).attr('text-anchor', 'middle')
+    .attr('fill', '#e74c3c').attr('font-size', '11px').attr('font-weight', 600);
+
+  // Baseline
+  statSvg.append('line').attr('x1', barX - 10).attr('y1', barY0)
+    .attr('x2', barX + 2*barW + 50).attr('y2', barY0)
+    .attr('stroke', '#444').attr('stroke-width', 1);
+
+  // F-distribution curve
+  function drawFCurve(currentF) {
+    fCurveG.selectAll('*').remove();
+
+    const xMax = Math.max(8, currentF * 1.5, fCrit * 1.5);
+    const xScale = d3.scaleLinear().domain([0, xMax]).range([0, fCurveW]);
+    const samples = d3.range(0.01, xMax, xMax/200);
+    const pdfVals = samples.map(x => fPDF(x, df1, df2));
+    const yMax = d3.max(pdfVals) || 1;
+    const yScale = d3.scaleLinear().domain([0, yMax]).range([fCurveH, 0]);
+
+    // Rejection region fill
+    const rejSamples = samples.filter(x => x >= fCrit);
+    if (rejSamples.length > 1) {
+      const areaGen = d3.area()
+        .x(d => xScale(d))
+        .y0(fCurveH)
+        .y1(d => yScale(fPDF(d, df1, df2)))
+        .curve(d3.curveBasis);
+      fCurveG.append('path').datum(rejSamples)
+        .attr('d', areaGen)
+        .attr('fill', '#e74c3c').attr('fill-opacity', 0.2);
+    }
+
+    // Curve
+    const lineGen = d3.line()
+      .x(d => xScale(d))
+      .y(d => yScale(fPDF(d, df1, df2)))
+      .curve(d3.curveBasis);
+    fCurveG.append('path').datum(samples)
+      .attr('d', lineGen)
+      .attr('fill', 'none').attr('stroke', '#aaa').attr('stroke-width', 1.5);
+
+    // Axis
+    fCurveG.append('line').attr('x1', 0).attr('y1', fCurveH)
+      .attr('x2', fCurveW).attr('y2', fCurveH)
+      .attr('stroke', '#555').attr('stroke-width', 1);
+
+    // Critical value line
+    fCurveG.append('line')
+      .attr('x1', xScale(fCrit)).attr('y1', 0)
+      .attr('x2', xScale(fCrit)).attr('y2', fCurveH)
+      .attr('stroke', '#e74c3c').attr('stroke-width', 1).attr('stroke-dasharray', '3,3');
+    fCurveG.append('text').attr('x', xScale(fCrit)).attr('y', fCurveH + 14)
+      .text('F_crit').attr('fill', '#e74c3c').attr('font-size', '9px').attr('text-anchor', 'middle');
+
+    // Current F marker
+    const fX = xScale(Math.min(currentF, xMax - 0.1));
+    fCurveG.append('line')
+      .attr('x1', fX).attr('y1', 0)
+      .attr('x2', fX).attr('y2', fCurveH)
+      .attr('stroke', '#e6a817').attr('stroke-width', 2).attr('stroke-opacity', 0.8);
+    fCurveG.append('circle')
+      .attr('cx', fX).attr('cy', yScale(fPDF(Math.min(currentF, xMax - 0.1), df1, df2)))
+      .attr('r', 4).attr('fill', '#e6a817');
+    fCurveG.append('text').attr('x', fX).attr('y', -6)
+      .text('F=' + currentF.toFixed(2))
+      .attr('fill', '#e6a817').attr('font-size', '10px').attr('text-anchor', 'middle').attr('font-weight', 600);
+
+    // Label
+    fCurveG.append('text').attr('x', fCurveW/2).attr('y', fCurveH + 28)
+      .text('F(' + df1 + ', ' + df2 + ') distribution')
+      .attr('fill', '#888').attr('font-size', '10px').attr('text-anchor', 'middle');
+
+    // Axis ticks
+    const ticks = xScale.ticks(5);
+    ticks.forEach(t => {
+      fCurveG.append('text').attr('x', xScale(t)).attr('y', fCurveH + 12)
+        .text(t.toFixed(0)).attr('fill', '#666').attr('font-size', '8px').attr('text-anchor', 'middle');
+    });
+  }
+
+  function updateAll() {
+    const sc = computeScene(signal, randomOffset);
+    drawVectors(sc);
+
+    // Bars
+    const numVal = sc.gapSq / df1;
+    const denVal = sc.sse / df2;
+    const maxVal = Math.max(numVal, denVal, 1);
+    const numH = Math.max(2, (numVal / maxVal) * barMaxH);
+    const denH = Math.max(2, (denVal / maxVal) * barMaxH);
+
+    numBar.transition().duration(300)
+      .attr('y', barY0 - numH).attr('height', numH);
+    denBar.transition().duration(300)
+      .attr('y', barY0 - denH).attr('height', denH);
+
+    numLabel.transition().duration(300)
+      .attr('y', barY0 - numH - 6)
+      .text(numVal.toFixed(1));
+    denLabel.transition().duration(300)
+      .attr('y', barY0 - denH - 6)
+      .text(denVal.toFixed(1));
+
+    drawFCurve(sc.F);
+
+    // Readouts
+    document.getElementById('rd-sser').textContent = sc.sseR.toFixed(1);
+    document.getElementById('rd-sse').textContent = sc.sse.toFixed(1);
+    document.getElementById('rd-q').textContent = df1;
+    document.getElementById('rd-nmp').textContent = df2;
+    document.getElementById('rd-f').textContent = sc.F.toFixed(3);
+    document.getElementById('rd-pval').textContent = pValue(sc.F).toFixed(4);
+  }
+
+  // Slider
+  const slider = document.getElementById('signal-slider');
+  slider.addEventListener('input', function() {
+    signal = +this.value;
+    randomOffset = 0;
+    updateAll();
+  });
+
+  // Random button
+  document.getElementById('random-btn').addEventListener('click', function() {
+    signal = 0;
+    slider.value = 0;
+    // Random offset simulates different y under H0
+    randomOffset = (Math.random() - 0.5) * 40;
+    updateAll();
+  });
+
+  updateAll();
+})();
+</script>
+</body>
+</html>

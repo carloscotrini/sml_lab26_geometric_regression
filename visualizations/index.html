@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Geometry of Linear Regression — Interactive Visualizations</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0f0f1a;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+  }
+  header {
+    text-align: center;
+    padding: 3rem 1rem 2rem;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    border-bottom: 2px solid #4a90d9;
+  }
+  header h1 {
+    font-size: 2rem;
+    font-weight: 300;
+    letter-spacing: 0.05em;
+    color: #fff;
+    margin-bottom: 0.5rem;
+  }
+  header p {
+    font-size: 1rem;
+    color: #8899aa;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 1.5rem;
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .card {
+    background: #1a1a2e;
+    border: 1px solid #2a2a4a;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+  .card:hover {
+    transform: translateY(-4px);
+    border-color: #4a90d9;
+    box-shadow: 0 8px 30px rgba(74, 144, 217, 0.15);
+  }
+  .card-header {
+    padding: 1.25rem 1.5rem 0.75rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+  }
+  .card-num {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #4a90d9;
+    background: rgba(74, 144, 217, 0.12);
+    padding: 0.2em 0.6em;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+  .card-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #fff;
+  }
+  .card-body {
+    padding: 0 1.5rem 1.25rem;
+  }
+  .card-desc {
+    font-size: 0.88rem;
+    color: #8899aa;
+    line-height: 1.5;
+  }
+  .card-tech {
+    margin-top: 0.75rem;
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .tag {
+    font-size: 0.72rem;
+    padding: 0.15em 0.55em;
+    border-radius: 4px;
+    background: rgba(80, 200, 120, 0.1);
+    color: #50c878;
+    border: 1px solid rgba(80, 200, 120, 0.2);
+  }
+  .section-label {
+    grid-column: 1 / -1;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #4a90d9;
+    padding: 1rem 0 0;
+    border-top: 1px solid #2a2a4a;
+    margin-top: 0.5rem;
+  }
+  .section-label:first-child { border-top: none; margin-top: 0; }
+  footer {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: #556;
+    font-size: 0.8rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>The Geometry of Linear Regression</h1>
+  <p>12 interactive visualizations exploring projection, decomposition, diagnostics, and inference</p>
+</header>
+
+<div class="grid">
+
+  <div class="section-label">Projection Fundamentals</div>
+
+  <a class="card" href="01_closest_point.html">
+    <div class="card-header">
+      <span class="card-num">01</span>
+      <span class="card-title">Closest Point on a Subspace</span>
+    </div>
+    <div class="card-body">
+      <p class="card-desc">Drag a point and watch the projection minimize distance. The residual is always perpendicular to the subspace.</p>
+      <div class="card-tech"><span class="tag">SVG</span><span class="tag">D3.js</span><span class="tag">Draggable</span></div>
+    </div>
+  </a>
+
+  <a class="card" href="02_point_plane_shadow.html">
+    <div class="card-header">
+      <span class="card-num">02</span>
+      <span class="card-title">Point, Plane, Shadow &mdash; OLS in R&sup3;</span>
+    </div>
+    <div class="card-body">
+      <p class="card-desc">Rotate a 3D scene to see that the residual is perpendicular to the column space from every angle. The normal equations X&#7488;e = 0 hold live.</p>
+      <div class="card-tech"><span class="tag">Three.js</span><span class="tag">3D</span><span class="tag">OrbitControls</span></div>
+    </div>
+  </a>
+
+  <a class="card" href="03_shadow_of_shadow.html">
+    <div class="card-header">
+      <span class="card-num">03</span>
+      <span class="card-title">The Shadow of a Shadow Is Itself</span>
+    </div>
+    <div class="card-body">
+      <p class="card-desc">Click "Project!" repeatedly and watch the vector land in the same place every time. Idempotency (H&sup2; = H) made visible.</p>
+      <div class="card-tech"><span class="tag">SVG</span><span class="tag">Animation</span><span class="tag">Oblique toggle</span></div>
+    </div>
+  </a>
+
+  <div class="section-label">Decomposition &amp; R&sup2;</div>
+
+  <a class="card" href="04_sst_ssr_sse.html">
+    <div class="card-header">
+      <span class="card-num">04</span>
+      <span class="card-title">SST = SSR + SSE &mdash; A Right Triangle</span>
+    </div>
+    <div class="card-body">
+      <p class="card-desc">Pythagorean squares on each side of the triangle. The gold area always equals green + red &mdash; because the legs are perpendicular.</p>
+      <div class="card-tech"><span class="tag">SVG</span><span class="tag">D3.js</span><span class="tag">Pythagorean squares</span></div>
+    </div>
+  </a>
+
+  <a class="card" href="05_sweeping_theta.html">
+    <div class="card-header">
+      <span class="card-num">05</span>
+      <span class="card-title">Sweeping &theta;, Watching R&sup2;</span>
+    </div>
+    <div class="card-body">
+      <p class="card-desc">R&sup2; is not an algebraic ratio &mdash; it is a geometric angle. Sweep &theta; from 0&deg; to 90&deg; and watch cos&sup2;&theta; trace the curve.</p>
+      <div class="card-tech"><span class="tag">D3.js</span><span class="tag">Synced panels</span><span class="tag">Presets</span></div>
+    </div>
+  </a>
+
+  <div class="section-label">Frisch&ndash;Waugh&ndash;Lovell &amp; Multicollinearity</div>
+
+  <a class="card" href="06_fwl_two_step.html">
+    <div class="card-header">
+      <span class="card-num">06</span>
+      <span class="card-title">Two-Step Projection (FWL Theorem)</span>
+    </div>
+    <div class="card-body">
+      <p class="card-desc">Residualise, then regress. Step through the FWL decomposition and see both methods produce the exact same &beta;&#770;&sub;2.</p>
+      <div class="card-tech"><span class="tag">D3.js</span><span class="tag">Isometric</span><span class="tag">Step toggle</span></div>
+    </div>
+  </a>
+
+  <a class="card" href="07_shrinking_residualised.html">
+    <div class="card-header">
+      <span class="card-num">07</span>
+      <span class="card-title">Shrinking the Residualised Predictor</span>
+    </div>
+    <div class="card-body">
+      <p class="card-desc">Watch M&#8321;x&#8322; shrink as correlation increases &mdash; and the standard error explode. Geometry explains the algebraic blow-up.</p>
+      <div class="card-tech"><span class="tag">D3.js</span><span class="tag">VIF readout</span></div>
+    </div>
+  </a>
+
+  <a class="card" href="09_pancake_column_space.html">
+    <div class="card-header">
+      <span class="card-num">09</span>
+      <span class="card-title">The Pancake Column Space</span>
+    </div>
+    <div class="card-body">
+      <p class="card-desc">Perturb y 50 times: the prediction barely moves, but the coefficient cloud stretches into a cigar. Stable predictions, chaotic decomposition.</p>
+      <div class="card-tech"><span class="tag">D3.js</span><span class="tag">Monte Carlo</span><span class="tag">Condition number</span></div>
+    </div>
+  </a>
+
+  <div class="section-label">Diagnostics &amp; Influence</div>
+
+  <a class="card" href="08_leverage_influence.html">
+    <div class="card-header">
+      <span class="card-num">08</span>
+      <span class="card-title">Leverage &times; Surprise = Influence</span>
+    </div>
+    <div class="card-body">
+      <p class="card-desc">Drag a point through all four quadrants of (leverage, surprise) space. Influence requires both factors &mdash; Cook's D thermometer lights up.</p>
+      <div class="card-tech"><span class="tag">D3.js</span><span class="tag">Draggable</span><span class="tag">Leave-one-out</span></div>
+    </div>
+  </a>
+
+  <div class="section-label">Regularisation &amp; Inference</div>
+
+  <a class="card" href="10_ridge_vs_lasso.html">
+    <div class="card-header">
+      <span class="card-num">10</span>
+      <span class="card-title">Circle vs. Diamond &mdash; Ridge vs. LASSO</span>
+    </div>
+    <div class="card-body">
+      <p class="card-desc">Same ellipses, same OLS, different constraint shape. The diamond's corners produce exact zeros &mdash; LASSO is sparse by geometry.</p>
+      <div class="card-tech"><span class="tag">D3.js</span><span class="tag">Synced panels</span><span class="tag">Draggable OLS</span></div>
+    </div>
+  </a>
+
+  <a class="card" href="11_f_test_projection.html">
+    <div class="card-header">
+      <span class="card-num">11</span>
+      <span class="card-title">Is the Extra Projection Worth It? (F-Test)</span>
+    </div>
+    <div class="card-body">
+      <p class="card-desc">Increase signal strength and watch the gap vector grow until F crosses into the rejection region. The F-test measures captured wall space.</p>
+      <div class="card-tech"><span class="tag">D3.js</span><span class="tag">Isometric</span><span class="tag">F-distribution</span></div>
+    </div>
+  </a>
+
+  <a class="card" href="12_confidence_ellipse.html">
+    <div class="card-header">
+      <span class="card-num">12</span>
+      <span class="card-title">The Shape of Uncertainty</span>
+    </div>
+    <div class="card-body">
+      <p class="card-desc">Drag &lambda;&#8322; toward zero and watch the confidence ellipse flatten into a needle &mdash; the same geometry behind multicollinearity and Ridge shrinkage.</p>
+      <div class="card-tech"><span class="tag">D3.js</span><span class="tag">Eigenvalue sliders</span><span class="tag">Marginal CIs</span></div>
+    </div>
+  </a>
+
+</div>
+
+<footer>
+  The Geometry of Linear Regression &mdash; ETH Z&uuml;rich
+</footer>
+
+</body>
+</html>

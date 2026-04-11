@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Point, Plane, Shadow &mdash; OLS in R&sup3;</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  h1 {
+    font-size: 1.6rem;
+    font-weight: 300;
+    letter-spacing: 0.04em;
+    margin-bottom: 6px;
+    color: #ccc;
+  }
+  .subtitle {
+    font-size: 0.9rem;
+    color: #888;
+    margin-bottom: 18px;
+  }
+  .container {
+    display: flex;
+    gap: 28px;
+    align-items: flex-start;
+  }
+  #three-canvas {
+    border: 1px solid #2a2a4a;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .panel {
+    background: #12122a;
+    border: 1px solid #2a2a4a;
+    border-radius: 8px;
+    padding: 20px;
+    width: 280px;
+    font-size: 0.82rem;
+    line-height: 1.7;
+  }
+  .panel h2 {
+    font-size: 1rem;
+    font-weight: 500;
+    margin-bottom: 12px;
+    color: #aaa;
+    border-bottom: 1px solid #2a2a4a;
+    padding-bottom: 8px;
+  }
+  .slider-group { margin-bottom: 10px; }
+  .slider-group label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2px;
+    color: #999;
+    font-size: 0.82rem;
+  }
+  .slider-group label span { color: #e6a817; font-family: 'SF Mono', 'Fira Code', monospace; }
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    background: #2a2a4a;
+    border-radius: 2px;
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    background: #e6a817;
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  .metric { margin-bottom: 4px; }
+  .metric .label { color: #888; }
+  .metric .value { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.8rem; }
+  .color-gold { color: #e6a817; }
+  .color-green { color: #50c878; }
+  .color-red { color: #e74c3c; }
+  .color-blue { color: #4a90d9; }
+  .toggle-btn {
+    margin-top: 12px;
+    padding: 8px 14px;
+    background: #2a2a4a;
+    border: 1px solid #3a3a5a;
+    color: #ccc;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: background 0.2s;
+    width: 100%;
+    text-align: center;
+  }
+  .toggle-btn:hover { background: #3a3a5a; }
+  .toggle-btn.active { background: #2a4a3a; border-color: #50c878; color: #50c878; }
+  .readout-section {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid #2a2a4a;
+  }
+  .aha {
+    margin-top: 14px;
+    padding: 10px;
+    background: rgba(80, 200, 120, 0.06);
+    border: 1px solid rgba(80, 200, 120, 0.15);
+    border-radius: 6px;
+    color: #50c878;
+    font-size: 0.76rem;
+    line-height: 1.5;
+  }
+  .xt-e-display {
+    margin-top: 8px;
+    padding: 8px;
+    background: rgba(74, 144, 217, 0.08);
+    border: 1px solid rgba(74, 144, 217, 0.2);
+    border-radius: 6px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.8rem;
+    display: none;
+  }
+  .xt-e-display.visible { display: block; }
+</style>
+</head>
+<body>
+<h1>Point, Plane, Shadow &mdash; OLS in R&#xB3;</h1>
+<p class="subtitle">Adjust <span style="color:#e6a817">y</span> with the sliders, orbit with the mouse, verify X&#x1D40;e = 0</p>
+<div class="container">
+  <div id="three-canvas"></div>
+  <div class="panel">
+    <h2>Controls</h2>
+    <div class="slider-group">
+      <label>y&#x2081; <span id="lbl-y1">2.00</span></label>
+      <input type="range" id="sl-y1" min="-3" max="6" step="0.05" value="2">
+    </div>
+    <div class="slider-group">
+      <label>y&#x2082; <span id="lbl-y2">3.00</span></label>
+      <input type="range" id="sl-y2" min="-3" max="6" step="0.05" value="3">
+    </div>
+    <div class="slider-group">
+      <label>y&#x2083; <span id="lbl-y3">4.00</span></label>
+      <input type="range" id="sl-y3" min="-3" max="6" step="0.05" value="4">
+    </div>
+
+    <button class="toggle-btn" id="btn-xte">Show X&#x1D40;e = 0 check</button>
+    <div class="xt-e-display" id="xte-display">
+      <div class="color-blue" id="xte-val"></div>
+    </div>
+
+    <div class="readout-section">
+      <h2>Live Readout</h2>
+      <div class="metric">
+        <span class="label color-gold">y = </span>
+        <span class="value color-gold" id="val-y"></span>
+      </div>
+      <div class="metric">
+        <span class="label">&#x3B2;&#x0302; = </span>
+        <span class="value" id="val-beta"></span>
+      </div>
+      <div class="metric">
+        <span class="label color-green">y&#x0302; = </span>
+        <span class="value color-green" id="val-yhat"></span>
+      </div>
+      <div class="metric">
+        <span class="label color-red">e = </span>
+        <span class="value color-red" id="val-e"></span>
+      </div>
+      <div class="metric">
+        <span class="label color-red">||e|| = </span>
+        <span class="value color-red" id="val-enorm"></span>
+      </div>
+    </div>
+
+    <div class="aha">
+      Aha: Rotate the view &mdash; the residual e is perpendicular to Col(X) from every angle. X&#x1D40;e = (0, 0)&#x1D40; confirms the normal equations for any y.
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const WIDTH = 800, HEIGHT = 500;
+
+  // Column vectors of X (fixed)
+  const x1 = new THREE.Vector3(1, 0, 0.5);
+  const x2 = new THREE.Vector3(0, 1, 0.3);
+
+  // Setup
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x12122a);
+
+  const camera = new THREE.PerspectiveCamera(45, WIDTH / HEIGHT, 0.1, 100);
+  camera.position.set(6, 5, 7);
+  camera.lookAt(0, 0, 0);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(WIDTH, HEIGHT);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  document.getElementById('three-canvas').appendChild(renderer.domElement);
+
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.target.set(0, 1, 0);
+
+  // Lighting
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+  dirLight.position.set(5, 10, 5);
+  scene.add(dirLight);
+
+  // Axis helpers (faint)
+  const axLen = 5;
+  function addAxis(dir, color) {
+    const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.3 });
+    const pts = [new THREE.Vector3(0,0,0), dir.clone().multiplyScalar(axLen)];
+    const geom = new THREE.BufferGeometry().setFromPoints(pts);
+    scene.add(new THREE.Line(geom, mat));
+  }
+  addAxis(new THREE.Vector3(1,0,0), 0x666666);
+  addAxis(new THREE.Vector3(0,1,0), 0x666666);
+  addAxis(new THREE.Vector3(0,0,1), 0x666666);
+
+  // Grid on xz plane at y=0 (faint)
+  const gridHelper = new THREE.GridHelper(10, 20, 0x1e1e3a, 0x1e1e3a);
+  gridHelper.position.y = 0;
+  scene.add(gridHelper);
+
+  // --- Col(X) plane ---
+  // Compute normal of plane spanned by x1, x2
+  const planeNormal = new THREE.Vector3().crossVectors(x1, x2).normalize();
+
+  // Semi-transparent plane
+  const planeGeom = new THREE.PlaneGeometry(8, 8);
+  const planeMat = new THREE.MeshBasicMaterial({
+    color: 0x4a90d9, transparent: true, opacity: 0.10,
+    side: THREE.DoubleSide, depthWrite: false
+  });
+  const planeMesh = new THREE.Mesh(planeGeom, planeMat);
+  // Orient plane to match span(x1, x2)
+  const up = new THREE.Vector3(0, 0, 1);
+  const quat = new THREE.Quaternion().setFromUnitVectors(up, planeNormal);
+  planeMesh.quaternion.copy(quat);
+  scene.add(planeMesh);
+
+  // Plane wireframe border
+  const planeEdge = new THREE.EdgesGeometry(planeGeom);
+  const planeEdgeMat = new THREE.LineBasicMaterial({ color: 0x4a90d9, transparent: true, opacity: 0.2 });
+  const planeEdgeLine = new THREE.LineSegments(planeEdge, planeEdgeMat);
+  planeEdgeLine.quaternion.copy(quat);
+  scene.add(planeEdgeLine);
+
+  // Label "Col(X)" - use a sprite
+  function makeLabel(text, color, size) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    ctx.font = `${size || 28}px "Segoe UI", system-ui, sans-serif`;
+    ctx.fillStyle = color || '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.fillText(text, 128, 42);
+    const tex = new THREE.CanvasTexture(canvas);
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(2, 0.5, 1);
+    return sprite;
+  }
+
+  const colXLabel = makeLabel('Col(X)', '#4a90d9', 26);
+  colXLabel.position.set(3, 0.1, 3);
+  scene.add(colXLabel);
+
+  // Arrow helper function
+  function makeArrow(dir, origin, len, color, headLen, headW) {
+    const arrow = new THREE.ArrowHelper(
+      dir.clone().normalize(), origin || new THREE.Vector3(0,0,0),
+      len || dir.length(), color, headLen || 0.2, headW || 0.1
+    );
+    // Make shaft thicker
+    arrow.line.material.linewidth = 2;
+    return arrow;
+  }
+
+  // Column vectors x1, x2
+  const arrowX1 = makeArrow(x1, new THREE.Vector3(0,0,0), x1.length(), 0x4a90d9, 0.15, 0.08);
+  const arrowX2 = makeArrow(x2, new THREE.Vector3(0,0,0), x2.length(), 0x4a90d9, 0.15, 0.08);
+  scene.add(arrowX1);
+  scene.add(arrowX2);
+
+  const lblX1 = makeLabel('x\u2081', '#4a90d9', 24);
+  lblX1.position.copy(x1.clone().multiplyScalar(1.15));
+  scene.add(lblX1);
+  const lblX2 = makeLabel('x\u2082', '#4a90d9', 24);
+  lblX2.position.copy(x2.clone().multiplyScalar(1.15));
+  scene.add(lblX2);
+
+  // Dynamic objects
+  let arrowY, arrowYhat, residualLine, rightAngleMark;
+  let lblY, lblYhat, lblE;
+  let ptY, ptYhat;
+
+  // Sphere for y and yhat
+  const sphereGeom = new THREE.SphereGeometry(0.08, 16, 16);
+  ptY = new THREE.Mesh(sphereGeom, new THREE.MeshBasicMaterial({ color: 0xe6a817 }));
+  ptYhat = new THREE.Mesh(sphereGeom, new THREE.MeshBasicMaterial({ color: 0x50c878 }));
+  scene.add(ptY);
+  scene.add(ptYhat);
+
+  lblY = makeLabel('y', '#e6a817', 26);
+  scene.add(lblY);
+  lblYhat = makeLabel('\u0177', '#50c878', 26);
+  scene.add(lblYhat);
+  lblE = makeLabel('e', '#e74c3c', 24);
+  scene.add(lblE);
+
+  // Arrow for y
+  arrowY = makeArrow(new THREE.Vector3(1,1,1), undefined, 1, 0xe6a817, 0.15, 0.08);
+  scene.add(arrowY);
+  // Arrow for yhat
+  arrowYhat = makeArrow(new THREE.Vector3(1,0,0), undefined, 1, 0x50c878, 0.15, 0.08);
+  scene.add(arrowYhat);
+
+  // Dashed residual line
+  const dashMat = new THREE.LineDashedMaterial({
+    color: 0xe74c3c, dashSize: 0.1, gapSize: 0.05, linewidth: 2
+  });
+  const resGeom = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0,0,0), new THREE.Vector3(1,1,1)
+  ]);
+  residualLine = new THREE.Line(resGeom, dashMat);
+  residualLine.computeLineDistances();
+  scene.add(residualLine);
+
+  // Right-angle mark
+  const raMat = new THREE.LineBasicMaterial({ color: 0x50c878, transparent: true, opacity: 0.7 });
+  const raGeom = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,0)
+  ]);
+  rightAngleMark = new THREE.Line(raGeom, raMat);
+  scene.add(rightAngleMark);
+
+  // Projection of y onto Col(X)
+  // yhat = X * (X^T X)^{-1} X^T y
+  // X = [x1 | x2], so X^T X is 2x2
+  function computeProjection(y) {
+    // X^T X
+    const a11 = x1.dot(x1), a12 = x1.dot(x2);
+    const a21 = x2.dot(x1), a22 = x2.dot(x2);
+    // X^T y
+    const b1 = x1.dot(y), b2 = x2.dot(y);
+    // Invert 2x2: [a11 a12; a21 a22]
+    const det = a11 * a22 - a12 * a21;
+    const beta1 = (a22 * b1 - a12 * b2) / det;
+    const beta2 = (-a21 * b1 + a11 * b2) / det;
+    // yhat = beta1 * x1 + beta2 * x2
+    const yhat = x1.clone().multiplyScalar(beta1).add(x2.clone().multiplyScalar(beta2));
+    return { yhat, beta: [beta1, beta2] };
+  }
+
+  function computeXtE(e) {
+    return [x1.dot(e), x2.dot(e)];
+  }
+
+  function updateScene() {
+    const y1 = parseFloat(document.getElementById('sl-y1').value);
+    const y2 = parseFloat(document.getElementById('sl-y2').value);
+    const y3 = parseFloat(document.getElementById('sl-y3').value);
+    const y = new THREE.Vector3(y1, y2, y3);
+
+    document.getElementById('lbl-y1').textContent = y1.toFixed(2);
+    document.getElementById('lbl-y2').textContent = y2.toFixed(2);
+    document.getElementById('lbl-y3').textContent = y3.toFixed(2);
+
+    const { yhat, beta } = computeProjection(y);
+    const e = y.clone().sub(yhat);
+
+    // Update arrow y
+    scene.remove(arrowY);
+    if (y.length() > 0.01) {
+      arrowY = makeArrow(y, undefined, y.length(), 0xe6a817, 0.15, 0.08);
+      scene.add(arrowY);
+    }
+
+    // Update arrow yhat
+    scene.remove(arrowYhat);
+    if (yhat.length() > 0.01) {
+      arrowYhat = makeArrow(yhat, undefined, yhat.length(), 0x50c878, 0.15, 0.08);
+      scene.add(arrowYhat);
+    }
+
+    // Points
+    ptY.position.copy(y);
+    ptYhat.position.copy(yhat);
+
+    // Labels
+    lblY.position.copy(y.clone().add(new THREE.Vector3(0.2, 0.2, 0)));
+    lblYhat.position.copy(yhat.clone().add(new THREE.Vector3(0.2, -0.2, 0.1)));
+    lblE.position.copy(yhat.clone().add(e.clone().multiplyScalar(0.5)).add(new THREE.Vector3(0.15, 0.1, 0)));
+
+    // Residual line
+    const resPositions = residualLine.geometry.attributes.position.array;
+    resPositions[0] = yhat.x; resPositions[1] = yhat.y; resPositions[2] = yhat.z;
+    resPositions[3] = y.x; resPositions[4] = y.y; resPositions[5] = y.z;
+    residualLine.geometry.attributes.position.needsUpdate = true;
+    residualLine.computeLineDistances();
+
+    // Right-angle mark at yhat
+    const markSize = 0.2;
+    const eDir = e.clone().normalize();
+    // Pick a direction in the plane (use x1 direction projected)
+    let planeDir = x1.clone().normalize();
+    // Make sure it's not parallel to e
+    if (Math.abs(planeDir.dot(eDir)) > 0.99) {
+      planeDir = x2.clone().normalize();
+    }
+    const p1 = yhat.clone().add(planeDir.clone().multiplyScalar(markSize));
+    const p2 = p1.clone().add(eDir.clone().multiplyScalar(markSize));
+    const p3 = yhat.clone().add(eDir.clone().multiplyScalar(markSize));
+    const raPositions = rightAngleMark.geometry.attributes.position.array;
+    raPositions[0] = p1.x; raPositions[1] = p1.y; raPositions[2] = p1.z;
+    raPositions[3] = p2.x; raPositions[4] = p2.y; raPositions[5] = p2.z;
+    raPositions[6] = p3.x; raPositions[7] = p3.y; raPositions[8] = p3.z;
+    rightAngleMark.geometry.attributes.position.needsUpdate = true;
+
+    // Readouts
+    const fmt = v => v.toFixed(3);
+    document.getElementById('val-y').textContent = `(${fmt(y.x)}, ${fmt(y.y)}, ${fmt(y.z)})`;
+    document.getElementById('val-beta').textContent = `(${fmt(beta[0])}, ${fmt(beta[1])})`;
+    document.getElementById('val-yhat').textContent = `(${fmt(yhat.x)}, ${fmt(yhat.y)}, ${fmt(yhat.z)})`;
+    document.getElementById('val-e').textContent = `(${fmt(e.x)}, ${fmt(e.y)}, ${fmt(e.z)})`;
+    document.getElementById('val-enorm').textContent = fmt(e.length());
+
+    // X^T e
+    const xte = computeXtE(e);
+    document.getElementById('xte-val').textContent =
+      `X\u1D40e = (${xte[0].toFixed(6)}, ${xte[1].toFixed(6)})\u1D40 \u2248 (0, 0)\u1D40`;
+  }
+
+  // Slider listeners
+  ['sl-y1', 'sl-y2', 'sl-y3'].forEach(id => {
+    document.getElementById(id).addEventListener('input', updateScene);
+  });
+
+  // Toggle button
+  const btn = document.getElementById('btn-xte');
+  const xteDisp = document.getElementById('xte-display');
+  let showXtE = false;
+  btn.addEventListener('click', () => {
+    showXtE = !showXtE;
+    btn.classList.toggle('active', showXtE);
+    btn.textContent = showXtE ? 'Hide X\u1D40e = 0 check' : 'Show X\u1D40e = 0 check';
+    xteDisp.classList.toggle('visible', showXtE);
+    updateScene();
+  });
+
+  // Initial update
+  updateScene();
+
+  // Animation loop
+  function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+})();
+</script>
+</body>
+</html>

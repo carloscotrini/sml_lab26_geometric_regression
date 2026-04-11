@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Circle vs. Diamond: Why LASSO Is Sparse</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  h1 {
+    font-size: 1.6rem;
+    font-weight: 300;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+    color: #ccc;
+  }
+  .subtitle {
+    font-size: 0.85rem;
+    color: #777;
+    margin-bottom: 16px;
+  }
+  .panels {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 14px;
+  }
+  .panel {
+    position: relative;
+  }
+  .panel-title {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.85rem;
+    color: #aaa;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    z-index: 10;
+    pointer-events: none;
+  }
+  svg {
+    background: #12122a;
+    border-radius: 8px;
+    border: 1px solid #2a2a4a;
+  }
+  .controls {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .control-group {
+    background: #12122a;
+    border: 1px solid #2a2a4a;
+    border-radius: 8px;
+    padding: 14px 18px;
+    min-width: 220px;
+  }
+  .control-group label {
+    display: block;
+    font-size: 0.78rem;
+    color: #999;
+    margin-bottom: 6px;
+  }
+  .control-group .value {
+    font-size: 0.9rem;
+    color: #e0e0e0;
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    background: #2a2a4a;
+    border-radius: 2px;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #9b59b6;
+    cursor: pointer;
+    border: 2px solid #1a1a2e;
+  }
+  .readout {
+    background: #12122a;
+    border: 1px solid #2a2a4a;
+    border-radius: 8px;
+    padding: 14px 18px;
+    min-width: 260px;
+  }
+  .readout h3 {
+    font-size: 0.75rem;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+  .readout-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.82rem;
+    margin-bottom: 4px;
+  }
+  .readout-row .label { color: #888; }
+  .readout-row .val { font-variant-numeric: tabular-nums; }
+  .val-ridge { color: #50c878; }
+  .val-lasso { color: #e74c3c; }
+  .val-ols { color: #e6a817; }
+  .tooltip-text {
+    font-size: 0.7rem;
+    color: #666;
+    margin-top: 6px;
+    line-height: 1.4;
+    font-style: italic;
+  }
+  .legend {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 10px;
+    font-size: 0.78rem;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .legend-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+</style>
+</head>
+<body>
+<h1>Circle vs. Diamond: Why LASSO Is Sparse</h1>
+<p class="subtitle">Same contours, same OLS, different constraint shape → fundamentally different solutions</p>
+<div class="legend">
+  <div class="legend-item"><span class="legend-swatch" style="background:#e6a817"></span> OLS solution</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:#50c878"></span> Ridge solution</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:#e74c3c"></span> LASSO solution</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:#9b59b6"></span> Constraint region</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:#888;border-radius:0"></span> RSS contours</div>
+</div>
+<div class="panels">
+  <div class="panel">
+    <div class="panel-title">Ridge (L² penalty)</div>
+    <svg id="ridge-canvas" width="390" height="450"></svg>
+  </div>
+  <div class="panel">
+    <div class="panel-title">LASSO (L¹ penalty)</div>
+    <svg id="lasso-canvas" width="390" height="450"></svg>
+  </div>
+</div>
+<div class="controls">
+  <div class="control-group">
+    <label>Constraint budget t</label>
+    <div class="value" id="t-display">1.20</div>
+    <input type="range" id="t-slider" min="0.1" max="3.0" value="1.2" step="0.01"
+           title="Resize both constraint regions simultaneously">
+    <p class="tooltip-text">Smaller t → stronger regularization. Watch the solutions converge to the origin.</p>
+  </div>
+  <div class="control-group">
+    <label>Ellipse eccentricity (correlation)</label>
+    <div class="value" id="ecc-display">0.70</div>
+    <input type="range" id="ecc-slider" min="0.05" max="0.98" value="0.7" step="0.01"
+           title="Simulates different correlation structures in X⊤X">
+    <p class="tooltip-text">High eccentricity → correlated predictors → elongated RSS contours.</p>
+  </div>
+  <div class="control-group">
+    <label>Ellipse rotation (°)</label>
+    <div class="value" id="rot-display">30°</div>
+    <input type="range" id="rot-slider" min="-90" max="90" value="30" step="1"
+           title="Rotate the RSS contour ellipses">
+    <p class="tooltip-text">Rotate the ellipse to see how LASSO tends to zero out a coefficient at corners.</p>
+  </div>
+  <div class="readout">
+    <h3>Solutions</h3>
+    <div class="readout-row"><span class="label">β̂_OLS</span><span class="val val-ols" id="ols-val">(—, —)</span></div>
+    <div class="readout-row"><span class="label">β̂_Ridge</span><span class="val val-ridge" id="ridge-val">(—, —)</span></div>
+    <div class="readout-row"><span class="label">β̂_LASSO</span><span class="val val-lasso" id="lasso-val">(—, —)</span></div>
+    <div class="readout-row"><span class="label">Ridge nonzero</span><span class="val val-ridge" id="ridge-nnz">—</span></div>
+    <div class="readout-row"><span class="label">LASSO nonzero</span><span class="val val-lasso" id="lasso-nnz">—</span></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const PW = 390, PH = 450;
+  const pcx = PW / 2, pcy = PH / 2 + 10;
+  const sc = 80; // pixels per unit
+
+  // State
+  let olsPos = [1.8, 1.4]; // OLS β in coefficient space
+  let tVal = 1.2;
+  let eccVal = 0.7;
+  let rotDeg = 30;
+  let dragging = false;
+
+  // Setup SVGs
+  const svgRidge = d3.select("#ridge-canvas");
+  const svgLasso = d3.select("#lasso-canvas");
+
+  function setupPanel(svg) {
+    // Grid
+    const g = svg.append("g");
+    for (let i = -4; i <= 4; i++) {
+      g.append("line").attr("x1", pcx+i*sc).attr("y1", 0).attr("x2", pcx+i*sc).attr("y2", PH)
+        .attr("stroke", "#1e1e3a").attr("stroke-width", 0.5);
+      g.append("line").attr("x1", 0).attr("y1", pcy+i*sc).attr("x2", PW).attr("y2", pcy+i*sc)
+        .attr("stroke", "#1e1e3a").attr("stroke-width", 0.5);
+    }
+    // Axes
+    g.append("line").attr("x1", 0).attr("y1", pcy).attr("x2", PW).attr("y2", pcy)
+      .attr("stroke", "#2a2a4a").attr("stroke-width", 1);
+    g.append("line").attr("x1", pcx).attr("y1", 0).attr("x2", pcx).attr("y2", PH)
+      .attr("stroke", "#2a2a4a").attr("stroke-width", 1);
+    // Axis labels
+    g.append("text").attr("x", PW - 14).attr("y", pcy - 8).attr("fill", "#555")
+      .attr("font-size", "12px").attr("text-anchor", "end").text("β₁");
+    g.append("text").attr("x", pcx + 8).attr("y", 20).attr("fill", "#555")
+      .attr("font-size", "12px").text("β₂");
+
+    return {
+      gEllipses: svg.append("g"),
+      gConstraint: svg.append("g"),
+      gSolution: svg.append("g"),
+      gOLS: svg.append("g"),
+    };
+  }
+
+  const ridgeLayers = setupPanel(svgRidge);
+  const lassoLayers = setupPanel(svgLasso);
+
+  function toS(v) { return [pcx + v[0]*sc, pcy - v[1]*sc]; }
+  function fromS(sx, sy) { return [(sx - pcx)/sc, -(sy - pcy)/sc]; }
+
+  // Generate ellipse path in SVG coordinates
+  function ellipsePath(center, a, b, angle, nPts) {
+    nPts = nPts || 120;
+    const pts = [];
+    const ca = Math.cos(angle), sa = Math.sin(angle);
+    for (let i = 0; i <= nPts; i++) {
+      const th = (2*Math.PI*i) / nPts;
+      const ex = a * Math.cos(th);
+      const ey = b * Math.sin(th);
+      const rx = ca*ex - sa*ey + center[0];
+      const ry = sa*ex + ca*ey + center[1];
+      const s = toS([rx, ry]);
+      pts.push(s);
+    }
+    return "M" + pts.map(p => p[0]+","+p[1]).join("L") + "Z";
+  }
+
+  // L2 circle path
+  function circlePath(r, nPts) {
+    nPts = nPts || 120;
+    const pts = [];
+    for (let i = 0; i <= nPts; i++) {
+      const th = (2*Math.PI*i)/nPts;
+      const s = toS([r*Math.cos(th), r*Math.sin(th)]);
+      pts.push(s);
+    }
+    return "M" + pts.map(p => p[0]+","+p[1]).join("L") + "Z";
+  }
+
+  // L1 diamond path
+  function diamondPath(r) {
+    const top = toS([0, r]);
+    const right = toS([r, 0]);
+    const bottom = toS([0, -r]);
+    const left = toS([-r, 0]);
+    return `M${top[0]},${top[1]} L${right[0]},${right[1]} L${bottom[0]},${bottom[1]} L${left[0]},${left[1]} Z`;
+  }
+
+  // Find Ridge solution: minimize RSS subject to ||β||₂ ≤ t
+  // RSS(β) = (β - β_ols)ᵀ A (β - β_ols) where A = X⊤X (simulated by ellipse params)
+  // Ridge solution: (A + λI)^{-1} A β_ols. We find λ via bisection on ||β||₂ = t.
+  function ridgeSolve(olsBeta, a1, a2, angle, t) {
+    const ca = Math.cos(angle), sa = Math.sin(angle);
+    // A in rotated frame: diag(1/a1^2, 1/a2^2) — these are the inverse squared semi-axes
+    // which correspond to eigenvalues of the Hessian
+    const e1 = 1/(a1*a1), e2 = 1/(a2*a2);
+
+    // Rotate OLS into eigenbasis
+    const u = ca*olsBeta[0] + sa*olsBeta[1];
+    const v = -sa*olsBeta[0] + ca*olsBeta[1];
+
+    // Check if OLS is already in constraint
+    if (Math.sqrt(olsBeta[0]*olsBeta[0]+olsBeta[1]*olsBeta[1]) <= t) {
+      return [...olsBeta];
+    }
+
+    // Ridge in eigenbasis: β_i = e_i * ols_i / (e_i + λ)
+    // Find λ such that ||β||₂ = t
+    let lo = 0, hi = 1000;
+    for (let iter = 0; iter < 100; iter++) {
+      const lam = (lo + hi) / 2;
+      const b1 = e1*u/(e1+lam);
+      const b2 = e2*v/(e2+lam);
+      const norm = Math.sqrt(b1*b1+b2*b2);
+      if (norm > t) lo = lam; else hi = lam;
+    }
+    const lam = (lo+hi)/2;
+    const rb1 = e1*u/(e1+lam);
+    const rb2 = e2*v/(e2+lam);
+    // Rotate back
+    return [ca*rb1 - sa*rb2, sa*rb1 + ca*rb2];
+  }
+
+  // Find LASSO solution: minimize RSS subject to ||β||₁ ≤ t
+  // Numerical search on the L1 boundary
+  function lassoSolve(olsBeta, a1, a2, angle, t) {
+    const ca = Math.cos(angle), sa = Math.sin(angle);
+    const e1 = 1/(a1*a1), e2 = 1/(a2*a2);
+
+    // Check if OLS is in constraint
+    if (Math.abs(olsBeta[0])+Math.abs(olsBeta[1]) <= t) {
+      return [...olsBeta];
+    }
+
+    // Evaluate RSS at a point: (β - ols)ᵀ A (β - ols)
+    function rss(b) {
+      const d0 = b[0]-olsBeta[0], d1 = b[1]-olsBeta[1];
+      // Rotate into eigenbasis
+      const du = ca*d0 + sa*d1;
+      const dv = -sa*d0 + ca*d1;
+      return e1*du*du + e2*dv*dv;
+    }
+
+    // Sample points on L1 boundary: |β₁| + |β₂| = t
+    // Parameterize: 4 edges
+    let bestB = [t, 0], bestRSS = rss([t,0]);
+    const N = 400;
+    for (let i = 0; i <= N; i++) {
+      const frac = i / N;
+      // All 4 edges
+      const candidates = [
+        [t*(1-frac), t*frac],      // quadrant I top edge
+        [-t*frac, t*(1-frac)],      // quadrant II
+        [-t*(1-frac), -t*frac],     // quadrant III
+        [t*frac, -t*(1-frac)],      // quadrant IV
+      ];
+      for (const c of candidates) {
+        const r = rss(c);
+        if (r < bestRSS) { bestRSS = r; bestB = c; }
+      }
+    }
+    // Refine with finer search around best
+    const edge = bestB[0] >= 0 && bestB[1] >= 0 ? 0 :
+                 bestB[0] <= 0 && bestB[1] >= 0 ? 1 :
+                 bestB[0] <= 0 && bestB[1] <= 0 ? 2 : 3;
+    for (let i = 0; i <= 1000; i++) {
+      const frac = i / 1000;
+      let c;
+      if (edge === 0) c = [t*(1-frac), t*frac];
+      else if (edge === 1) c = [-t*frac, t*(1-frac)];
+      else if (edge === 2) c = [-t*(1-frac), -t*frac];
+      else c = [t*frac, -t*(1-frac)];
+      const r = rss(c);
+      if (r < bestRSS) { bestRSS = r; bestB = c; }
+    }
+    return bestB;
+  }
+
+  function draw() {
+    const rotRad = rotDeg * Math.PI / 180;
+    // Ellipse semi-axes: a (major) and b (minor). Eccentricity controls ratio.
+    const aBase = 1.0; // base scaling
+    const bBase = aBase * (1 - eccVal); // minor axis shrinks with eccentricity
+
+    // Contour levels
+    const levels = [0.3, 0.6, 1.0, 1.5, 2.2, 3.0, 4.0];
+
+    // --- Draw on both panels ---
+    function drawPanel(layers, constraintType) {
+      // Ellipses
+      const ellipseData = levels.map(l => ({
+        path: ellipsePath(olsPos, aBase*Math.sqrt(l), bBase*Math.sqrt(l), rotRad),
+        level: l
+      }));
+      layers.gEllipses.selectAll("path.contour").data(ellipseData).join("path").attr("class", "contour")
+        .attr("d", d => d.path)
+        .attr("fill", "none")
+        .attr("stroke", "#888").attr("stroke-width", 0.8)
+        .attr("stroke-opacity", d => 0.5 - d.level * 0.04);
+
+      // Constraint region
+      if (constraintType === "ridge") {
+        layers.gConstraint.selectAll("path.constraint").data([0]).join("path").attr("class", "constraint")
+          .attr("d", circlePath(tVal))
+          .attr("fill", "#9b59b6").attr("fill-opacity", 0.06)
+          .attr("stroke", "#9b59b6").attr("stroke-width", 2).attr("stroke-opacity", 0.7);
+      } else {
+        layers.gConstraint.selectAll("path.constraint").data([0]).join("path").attr("class", "constraint")
+          .attr("d", diamondPath(tVal))
+          .attr("fill", "#9b59b6").attr("fill-opacity", 0.06)
+          .attr("stroke", "#9b59b6").attr("stroke-width", 2)
+          .attr("stroke-dasharray", "8,4").attr("stroke-opacity", 0.7);
+      }
+
+      // Solution
+      let sol;
+      if (constraintType === "ridge") {
+        sol = ridgeSolve(olsPos, aBase, bBase, rotRad, tVal);
+      } else {
+        sol = lassoSolve(olsPos, aBase, bBase, rotRad, tVal);
+      }
+      const sp = toS(sol);
+      const solColor = constraintType === "ridge" ? "#50c878" : "#e74c3c";
+
+      // Solution dot
+      layers.gSolution.selectAll("circle.sol").data([0]).join("circle").attr("class", "sol")
+        .attr("cx", sp[0]).attr("cy", sp[1])
+        .attr("r", 7).attr("fill", solColor).attr("stroke", "#fff").attr("stroke-width", 1.5)
+        .attr("opacity", 0.9);
+
+      // Solution label
+      layers.gSolution.selectAll("text.sol-label").data([0]).join("text").attr("class", "sol-label")
+        .attr("x", sp[0]+12).attr("y", sp[1]-10)
+        .attr("fill", solColor).attr("font-size", "12px").attr("font-weight", 600)
+        .text(constraintType === "ridge" ? "β̂_Ridge" : "β̂_LASSO");
+
+      // Line from OLS to solution
+      const olsS = toS(olsPos);
+      layers.gSolution.selectAll("line.sol-line").data([0]).join("line").attr("class", "sol-line")
+        .attr("x1", olsS[0]).attr("y1", olsS[1])
+        .attr("x2", sp[0]).attr("y2", sp[1])
+        .attr("stroke", solColor).attr("stroke-width", 1)
+        .attr("stroke-dasharray", "4,3").attr("opacity", 0.5);
+
+      // OLS dot
+      layers.gOLS.selectAll("circle.ols").data([0]).join("circle").attr("class", "ols")
+        .attr("cx", olsS[0]).attr("cy", olsS[1])
+        .attr("r", 6).attr("fill", "#e6a817").attr("stroke", "#fff").attr("stroke-width", 1.5)
+        .attr("opacity", 0.9).style("cursor", "grab");
+
+      layers.gOLS.selectAll("text.ols-label").data([0]).join("text").attr("class", "ols-label")
+        .attr("x", olsS[0]+10).attr("y", olsS[1]-10)
+        .attr("fill", "#e6a817").attr("font-size", "12px").attr("font-weight", 600)
+        .text("β̂_OLS");
+
+      // Draw tangent contour at solution
+      // Find the RSS level at the solution
+      const d0 = sol[0]-olsPos[0], d1 = sol[1]-olsPos[1];
+      const ca = Math.cos(rotRad), sa = Math.sin(rotRad);
+      const du = ca*d0 + sa*d1, dv = -sa*d0 + ca*d1;
+      const e1 = 1/(aBase*aBase), e2 = 1/(bBase*bBase);
+      const rssLevel = e1*du*du + e2*dv*dv;
+      if (rssLevel > 0.01) {
+        layers.gSolution.selectAll("path.tangent").data([0]).join("path").attr("class", "tangent")
+          .attr("d", ellipsePath(olsPos, aBase*Math.sqrt(rssLevel), bBase*Math.sqrt(rssLevel), rotRad))
+          .attr("fill", "none")
+          .attr("stroke", solColor).attr("stroke-width", 1.5)
+          .attr("stroke-opacity", 0.4).attr("stroke-dasharray", "3,3");
+      } else {
+        layers.gSolution.selectAll("path.tangent").data([0]).join("path").attr("class", "tangent")
+          .attr("d", "M0,0").attr("stroke", "none");
+      }
+
+      return sol;
+    }
+
+    const ridgeSol = drawPanel(ridgeLayers, "ridge");
+    const lassoSol = drawPanel(lassoLayers, "lasso");
+
+    // Readouts
+    d3.select("#ols-val").text(`(${olsPos[0].toFixed(2)}, ${olsPos[1].toFixed(2)})`);
+    d3.select("#ridge-val").text(`(${ridgeSol[0].toFixed(3)}, ${ridgeSol[1].toFixed(3)})`);
+    d3.select("#lasso-val").text(`(${lassoSol[0].toFixed(3)}, ${lassoSol[1].toFixed(3)})`);
+
+    const ridgeNNZ = (Math.abs(ridgeSol[0]) > 0.005 ? 1 : 0) + (Math.abs(ridgeSol[1]) > 0.005 ? 1 : 0);
+    const lassoNNZ = (Math.abs(lassoSol[0]) > 0.005 ? 1 : 0) + (Math.abs(lassoSol[1]) > 0.005 ? 1 : 0);
+    d3.select("#ridge-nnz").text(`${ridgeNNZ} / 2`);
+    d3.select("#lasso-nnz").text(`${lassoNNZ} / 2`);
+  }
+
+  // -- Dragging OLS on both panels --
+  function setupDrag(svg) {
+    const drag = d3.drag()
+      .on("start", () => { dragging = true; })
+      .on("drag", (event) => {
+        olsPos = fromS(event.x, event.y);
+        // Clamp
+        olsPos[0] = Math.max(-3.5, Math.min(3.5, olsPos[0]));
+        olsPos[1] = Math.max(-3.5, Math.min(3.5, olsPos[1]));
+        draw();
+      })
+      .on("end", () => { dragging = false; });
+
+    svg.selectAll("circle.ols").call(drag);
+  }
+
+  // Sliders
+  d3.select("#t-slider").on("input", function() {
+    tVal = +this.value;
+    d3.select("#t-display").text(tVal.toFixed(2));
+    draw();
+  });
+  d3.select("#ecc-slider").on("input", function() {
+    eccVal = +this.value;
+    d3.select("#ecc-display").text(eccVal.toFixed(2));
+    draw();
+  });
+  d3.select("#rot-slider").on("input", function() {
+    rotDeg = +this.value;
+    d3.select("#rot-display").text(`${rotDeg}°`);
+    draw();
+  });
+
+  draw();
+  setupDrag(svgRidge);
+  setupDrag(svgLasso);
+
+  // Re-attach drag after redraws
+  const origDraw = draw;
+  draw = function() {
+    origDraw();
+    setupDrag(svgRidge);
+    setupDrag(svgLasso);
+  };
+  draw();
+})();
+</script>
+</body>
+</html>

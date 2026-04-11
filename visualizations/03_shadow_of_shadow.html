@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Shadow of a Shadow Is Itself</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  h1 {
+    font-size: 1.6rem;
+    font-weight: 300;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+    color: #ffffff;
+  }
+  .subtitle {
+    font-size: 0.95rem;
+    color: #8888aa;
+    margin-bottom: 18px;
+  }
+  .canvas-wrap {
+    position: relative;
+    background: #12122a;
+    border: 1px solid #2a2a4a;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  svg { display: block; }
+  .controls {
+    display: flex;
+    gap: 14px;
+    margin-top: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  button, .toggle-btn {
+    background: #2a2a4e;
+    color: #c0c0e0;
+    border: 1px solid #4a4a6e;
+    border-radius: 6px;
+    padding: 8px 20px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    user-select: none;
+  }
+  button:hover, .toggle-btn:hover {
+    background: #3a3a5e;
+    border-color: #6a6a8e;
+  }
+  button:active { transform: scale(0.97); }
+  .toggle-btn.active {
+    background: #4a3a5e;
+    border-color: #8a6aae;
+    color: #d0b0f0;
+  }
+  .readout {
+    margin-top: 14px;
+    font-size: 0.88rem;
+    color: #9999bb;
+    text-align: center;
+    line-height: 1.7;
+    font-variant-numeric: tabular-nums;
+  }
+  .readout span { color: #ccccee; font-weight: 500; }
+  .counter {
+    font-size: 1.05rem;
+    color: #aaaacc;
+    background: #1e1e3a;
+    padding: 4px 14px;
+    border-radius: 5px;
+    border: 1px solid #2a2a4a;
+  }
+  .counter strong { color: #50c878; }
+  .tooltip-box {
+    position: absolute;
+    background: #22224a;
+    border: 1px solid #4a4a7a;
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 0.78rem;
+    color: #ccccee;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+  }
+  .legend {
+    display: flex;
+    gap: 18px;
+    margin-top: 10px;
+    font-size: 0.82rem;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .legend-swatch {
+    width: 14px;
+    height: 3px;
+    border-radius: 2px;
+  }
+</style>
+</head>
+<body>
+
+<h1>The Shadow of a Shadow Is Itself</h1>
+<p class="subtitle">Orthogonal projection is idempotent: H<sup>2</sup> = H</p>
+
+<div class="canvas-wrap" id="canvas-wrap">
+  <svg id="viz" width="800" height="500"></svg>
+  <div class="tooltip-box" id="tooltip"></div>
+</div>
+
+<div class="controls">
+  <button id="btn-project" title="Apply the projection matrix H one more time">Project!</button>
+  <button id="btn-reset" title="Reset projection count and restore y">Reset</button>
+  <div class="counter">Projections applied: <strong id="proj-count">0</strong></div>
+  <div class="toggle-btn" id="btn-oblique" title="Switch to an oblique (non-symmetric) idempotent projection">Oblique projection</div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-swatch" style="background:#4a90d9"></div> Subspace S</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#e6a817"></div> y</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#50c878"></div> y&#x0302; = Hy</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#e74c3c"></div> e = y &minus; y&#x0302;</div>
+</div>
+
+<div class="readout" id="readout"></div>
+
+<script>
+(function() {
+  const W = 800, H = 500;
+  const ox = 400, oy = 350; // origin
+  const svg = document.getElementById('viz');
+  const tooltip = document.getElementById('tooltip');
+  const wrap = document.getElementById('canvas-wrap');
+
+  // State
+  let yVec = [220, -200]; // in SVG coords (right, up in math = right, negative-y in SVG)
+  let projCount = 0;
+  let oblique = false;
+  let subspaceAngle = Math.PI / 7; // angle of subspace line from horizontal
+
+  // Subspace direction (unit)
+  function sDir() {
+    return [Math.cos(subspaceAngle), Math.sin(subspaceAngle)];
+  }
+
+  // Orthogonal projection onto subspace
+  function orthProject(v) {
+    const d = sDir();
+    const dot = v[0]*d[0] + v[1]*d[1];
+    return [dot*d[0], dot*d[1]];
+  }
+
+  // Oblique projection: idempotent but NOT symmetric
+  // Project along a direction that is NOT perpendicular to S
+  // We define the oblique direction as rotated from the perpendicular
+  const obliqueSkew = Math.PI / 5; // skew angle
+  function obliqueProject(v) {
+    // S direction
+    const sd = sDir();
+    // Oblique projection direction (not perpendicular to S)
+    const perpAngle = subspaceAngle + Math.PI/2 + obliqueSkew;
+    const pd = [Math.cos(perpAngle), Math.sin(perpAngle)];
+    // Project v onto S along direction pd
+    // Find t such that v - t*pd is in span(sd)
+    // (v - t*pd) = alpha * sd
+    // v[0] - t*pd[0] = alpha*sd[0]
+    // v[1] - t*pd[1] = alpha*sd[1]
+    // From these: t = (v[1]*sd[0] - v[0]*sd[1]) / (pd[1]*sd[0] - pd[0]*sd[1])
+    const denom = pd[1]*sd[0] - pd[0]*sd[1];
+    if (Math.abs(denom) < 1e-12) return orthProject(v);
+    const t = (v[1]*sd[0] - v[0]*sd[1]) / denom;
+    return [v[0] - t*pd[0], v[1] - t*pd[1]];
+  }
+
+  function project(v) {
+    return oblique ? obliqueProject(v) : orthProject(v);
+  }
+
+  // Math coords: we work in SVG coords where y-down, but display with y meaning up.
+  // For vectors, we store as [dx, dy] in SVG space (dy negative = up).
+
+  function vecLen(v) { return Math.sqrt(v[0]*v[0]+v[1]*v[1]); }
+  function vecSub(a,b) { return [a[0]-b[0], a[1]-b[1]]; }
+  function vecDot(a,b) { return a[0]*b[0]+a[1]*b[1]; }
+
+  function angleBetween(a, b) {
+    const la = vecLen(a), lb = vecLen(b);
+    if (la < 1e-9 || lb < 1e-9) return 0;
+    let cos = vecDot(a,b)/(la*lb);
+    cos = Math.max(-1, Math.min(1, cos));
+    return Math.acos(cos) * 180 / Math.PI;
+  }
+
+  // SVG helpers
+  function createSVG(tag, attrs) {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (const [k,v] of Object.entries(attrs)) el.setAttribute(k, v);
+    return el;
+  }
+
+  // Build static elements
+  // Grid
+  const defs = createSVG('defs', {});
+  defs.innerHTML = `
+    <marker id="arrow-gold" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#e6a817"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#50c878"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#e74c3c"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#b070e0"/>
+    </marker>
+  `;
+  svg.appendChild(defs);
+
+  // Background grid
+  const gridG = createSVG('g', {opacity: '0.08'});
+  for (let x = 0; x <= W; x += 40) {
+    gridG.appendChild(createSVG('line', {x1:x,y1:0,x2:x,y2:H,stroke:'#aaaaff','stroke-width':'0.5'}));
+  }
+  for (let y = 0; y <= H; y += 40) {
+    gridG.appendChild(createSVG('line', {x1:0,y1:y,x2:W,y2:y,stroke:'#aaaaff','stroke-width':'0.5'}));
+  }
+  svg.appendChild(gridG);
+
+  // Origin dot
+  const originDot = createSVG('circle', {cx:ox,cy:oy,r:4,fill:'#666688'});
+  svg.appendChild(originDot);
+  const originLabel = createSVG('text', {x:ox-14,y:oy+18,fill:'#666688','font-size':'12','font-family':'inherit'});
+  originLabel.textContent = '0';
+  svg.appendChild(originLabel);
+
+  // Subspace line
+  const subLine = createSVG('line', {'stroke':'#4a90d9','stroke-width':'2','stroke-linecap':'round',opacity:'0.7'});
+  svg.appendChild(subLine);
+  const subLabel = createSVG('text', {fill:'#4a90d9','font-size':'14','font-family':'inherit','font-style':'italic'});
+  subLabel.textContent = 'S';
+  svg.appendChild(subLabel);
+
+  // Right angle mark
+  const rightAngle = createSVG('path', {fill:'none',stroke:'#50c878','stroke-width':'1.5',opacity:'0.7'});
+  svg.appendChild(rightAngle);
+
+  // Oblique projection direction line (dashed, shown when oblique is on)
+  const obliqueDirLine = createSVG('line', {'stroke':'#b070e0','stroke-width':'1','stroke-dasharray':'6,4',opacity:'0'});
+  svg.appendChild(obliqueDirLine);
+
+  // Residual vector (dashed red)
+  const residualLine = createSVG('line', {'stroke':'#e74c3c','stroke-width':'2','stroke-dasharray':'8,5','stroke-linecap':'round','marker-end':'url(#arrow-red)',opacity:'0'});
+  svg.appendChild(residualLine);
+
+  // Projection vector (green)
+  const projLine = createSVG('line', {'stroke':'#50c878','stroke-width':'2.5','stroke-linecap':'round','marker-end':'url(#arrow-green)',opacity:'0'});
+  svg.appendChild(projLine);
+
+  // Ghost vector for animation (shows the "attempt" to move)
+  const ghostLine = createSVG('line', {'stroke':'#50c878','stroke-width':'2','stroke-linecap':'round',opacity:'0','stroke-dasharray':'4,3'});
+  svg.appendChild(ghostLine);
+
+  // y vector (gold)
+  const yLine = createSVG('line', {'stroke':'#e6a817','stroke-width':'2.5','stroke-linecap':'round','marker-end':'url(#arrow-gold)'});
+  svg.appendChild(yLine);
+
+  // Draggable handle for y
+  const yHandle = createSVG('circle', {r:'12',fill:'#e6a817','fill-opacity':'0.25',stroke:'#e6a817','stroke-width':'1.5',cursor:'grab'});
+  svg.appendChild(yHandle);
+
+  // Labels
+  const yLabel = createSVG('text', {fill:'#e6a817','font-size':'15','font-family':'inherit','font-weight':'500'});
+  yLabel.textContent = 'y';
+  svg.appendChild(yLabel);
+
+  const projLabel = createSVG('text', {fill:'#50c878','font-size':'15','font-family':'inherit','font-weight':'500',opacity:'0'});
+  projLabel.textContent = 'y\u0302 = Hy';
+  svg.appendChild(projLabel);
+
+  const resLabel = createSVG('text', {fill:'#e74c3c','font-size':'13','font-family':'inherit',opacity:'0'});
+  resLabel.textContent = 'e';
+  svg.appendChild(resLabel);
+
+  // Projection dot
+  const projDot = createSVG('circle', {r:'5',fill:'#50c878',opacity:'0'});
+  svg.appendChild(projDot);
+
+  function updateSubspaceLine() {
+    const d = sDir();
+    const len = 500;
+    subLine.setAttribute('x1', ox - d[0]*len);
+    subLine.setAttribute('y1', oy - d[1]*len);
+    subLine.setAttribute('x2', ox + d[0]*len);
+    subLine.setAttribute('y2', oy + d[1]*len);
+    subLabel.setAttribute('x', ox + d[0]*(len-20) + 10);
+    subLabel.setAttribute('y', oy + d[1]*(len-20) - 10);
+  }
+
+  function updateObliqueDirLine() {
+    if (!oblique) {
+      obliqueDirLine.setAttribute('opacity','0');
+      return;
+    }
+    const perpAngle = subspaceAngle + Math.PI/2 + obliqueSkew;
+    const pd = [Math.cos(perpAngle), Math.sin(perpAngle)];
+    const len = 400;
+    obliqueDirLine.setAttribute('x1', ox - pd[0]*len);
+    obliqueDirLine.setAttribute('y1', oy - pd[1]*len);
+    obliqueDirLine.setAttribute('x2', ox + pd[0]*len);
+    obliqueDirLine.setAttribute('y2', oy + pd[1]*len);
+    obliqueDirLine.setAttribute('opacity','0.3');
+  }
+
+  function render() {
+    updateSubspaceLine();
+    updateObliqueDirLine();
+
+    // y vector
+    const yEnd = [ox + yVec[0], oy + yVec[1]];
+    yLine.setAttribute('x1', ox);
+    yLine.setAttribute('y1', oy);
+    yLine.setAttribute('x2', yEnd[0]);
+    yLine.setAttribute('y2', yEnd[1]);
+    yHandle.setAttribute('cx', yEnd[0]);
+    yHandle.setAttribute('cy', yEnd[1]);
+    yLabel.setAttribute('x', yEnd[0] + 10);
+    yLabel.setAttribute('y', yEnd[1] - 10);
+
+    // Projection
+    const pVec = project(yVec);
+    const pEnd = [ox + pVec[0], oy + pVec[1]];
+
+    const show = projCount > 0;
+    const opac = show ? '1' : '0';
+
+    projLine.setAttribute('x1', ox);
+    projLine.setAttribute('y1', oy);
+    projLine.setAttribute('x2', pEnd[0]);
+    projLine.setAttribute('y2', pEnd[1]);
+    projLine.setAttribute('opacity', opac);
+
+    projDot.setAttribute('cx', pEnd[0]);
+    projDot.setAttribute('cy', pEnd[1]);
+    projDot.setAttribute('opacity', opac);
+
+    projLabel.setAttribute('x', pEnd[0] + 10);
+    projLabel.setAttribute('y', pEnd[1] + 20);
+    projLabel.setAttribute('opacity', opac);
+    projLabel.textContent = projCount >= 2 ? 'H\u00B2y = Hy = y\u0302' : 'y\u0302 = Hy';
+
+    // Residual
+    const eVec = vecSub(yVec, pVec);
+    residualLine.setAttribute('x1', pEnd[0]);
+    residualLine.setAttribute('y1', pEnd[1]);
+    residualLine.setAttribute('x2', yEnd[0]);
+    residualLine.setAttribute('y2', yEnd[1]);
+    residualLine.setAttribute('opacity', show ? '0.8' : '0');
+
+    const eMid = [(pEnd[0]+yEnd[0])/2, (pEnd[1]+yEnd[1])/2];
+    resLabel.setAttribute('x', eMid[0] + 8);
+    resLabel.setAttribute('y', eMid[1] - 8);
+    resLabel.setAttribute('opacity', show ? '0.8' : '0');
+
+    // Right angle mark
+    if (show && !oblique) {
+      const eLen = vecLen(eVec);
+      const pLen = vecLen(pVec);
+      if (eLen > 15 && pLen > 15) {
+        const sz = 15;
+        // unit vectors along projection and residual
+        const pu = [pVec[0]/pLen, pVec[1]/pLen];
+        const eu = [eVec[0]/eLen, eVec[1]/eLen];
+        const c1 = [pEnd[0] + eu[0]*sz, pEnd[1] + eu[1]*sz];
+        const c2 = [c1[0] - pu[0]*sz, c1[1] - pu[1]*sz];
+        const c3 = [pEnd[0] - pu[0]*sz, pEnd[1] - pu[1]*sz];
+        rightAngle.setAttribute('d', `M${c1[0]},${c1[1]} L${c2[0]},${c2[1]} L${c3[0]},${c3[1]}`);
+        rightAngle.setAttribute('opacity', '0.7');
+      } else {
+        rightAngle.setAttribute('opacity', '0');
+      }
+    } else {
+      rightAngle.setAttribute('opacity', '0');
+    }
+
+    // Readout
+    const normDiff = vecLen(vecSub(project(pVec), pVec));
+    const angleES = angleBetween(eVec, sDir());
+    const readoutEl = document.getElementById('readout');
+    readoutEl.innerHTML =
+      `\u2016H<sup>k</sup>y \u2212 Hy\u2016 = <span>${normDiff.toFixed(4)}</span> &nbsp;&nbsp;|&nbsp;&nbsp; ` +
+      `\u2220(e, S) = <span>${show ? angleES.toFixed(1) : '\u2014'}\u00B0</span> &nbsp;&nbsp;|&nbsp;&nbsp; ` +
+      `\u2016y\u2016 = <span>${vecLen(yVec).toFixed(1)}</span> &nbsp;&nbsp;|&nbsp;&nbsp; ` +
+      `\u2016y\u0302\u2016 = <span>${vecLen(pVec).toFixed(1)}</span> &nbsp;&nbsp;|&nbsp;&nbsp; ` +
+      `\u2016e\u2016 = <span>${vecLen(eVec).toFixed(1)}</span>` +
+      (oblique ? ' &nbsp;&nbsp;|&nbsp;&nbsp; <span style="color:#b070e0">oblique</span>' : '');
+
+    document.getElementById('proj-count').textContent = projCount;
+  }
+
+  // Animate "trying to move" on repeated projections
+  function animateBounce() {
+    const pVec = project(yVec);
+    const pEnd = [ox + pVec[0], oy + pVec[1]];
+    // Show ghost moving slightly off and snapping back
+    const sd = sDir();
+    const perpX = -sd[1], perpY = sd[0]; // perpendicular to subspace
+    const offset = 20;
+    ghostLine.setAttribute('x1', ox);
+    ghostLine.setAttribute('y1', oy);
+    ghostLine.setAttribute('opacity', '0.6');
+
+    let t = 0;
+    const dur = 500;
+    const start = performance.now();
+    function step(now) {
+      t = (now - start) / dur;
+      if (t > 1) {
+        ghostLine.setAttribute('opacity', '0');
+        return;
+      }
+      // Move out then back in with easing
+      const ease = Math.sin(t * Math.PI);
+      const gx = pEnd[0] + perpX * offset * ease;
+      const gy = pEnd[1] + perpY * offset * ease;
+      ghostLine.setAttribute('x2', gx);
+      ghostLine.setAttribute('y2', gy);
+      ghostLine.setAttribute('opacity', String(0.5 * (1 - t)));
+      requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  // --- Interactions ---
+
+  // Drag y
+  let dragging = false;
+  yHandle.addEventListener('mousedown', (e) => {
+    dragging = true;
+    yHandle.setAttribute('cursor', 'grabbing');
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const rect = svg.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    yVec = [mx - ox, my - oy];
+    render();
+  });
+  window.addEventListener('mouseup', () => {
+    dragging = false;
+    yHandle.setAttribute('cursor', 'grab');
+  });
+
+  // Touch support
+  yHandle.addEventListener('touchstart', (e) => {
+    dragging = true;
+    e.preventDefault();
+  });
+  window.addEventListener('touchmove', (e) => {
+    if (!dragging) return;
+    const rect = svg.getBoundingClientRect();
+    const touch = e.touches[0];
+    const mx = touch.clientX - rect.left;
+    const my = touch.clientY - rect.top;
+    yVec = [mx - ox, my - oy];
+    render();
+  });
+  window.addEventListener('touchend', () => { dragging = false; });
+
+  // Project button
+  document.getElementById('btn-project').addEventListener('click', () => {
+    projCount++;
+    if (projCount >= 2) {
+      animateBounce();
+    }
+    render();
+  });
+
+  // Reset
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    projCount = 0;
+    yVec = [220, -200];
+    render();
+  });
+
+  // Oblique toggle
+  document.getElementById('btn-oblique').addEventListener('click', () => {
+    oblique = !oblique;
+    document.getElementById('btn-oblique').classList.toggle('active', oblique);
+    render();
+  });
+
+  // Tooltips
+  function showTip(el, text) {
+    el.addEventListener('mouseenter', (e) => {
+      tooltip.textContent = text;
+      tooltip.style.opacity = '1';
+      const rect = wrap.getBoundingClientRect();
+      tooltip.style.left = (e.clientX - rect.left + 12) + 'px';
+      tooltip.style.top = (e.clientY - rect.top - 28) + 'px';
+    });
+    el.addEventListener('mouseleave', () => { tooltip.style.opacity = '0'; });
+  }
+  showTip(yHandle, 'Drag to move y');
+  showTip(subLine, 'Subspace S');
+
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sweeping θ, Watching R²</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  h1 {
+    font-size: 1.6rem;
+    font-weight: 300;
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+    color: #ffffff;
+  }
+  .subtitle {
+    font-size: 0.9rem;
+    color: #8888aa;
+    margin-bottom: 18px;
+    font-style: italic;
+  }
+  .main-container {
+    display: flex;
+    gap: 0;
+    background: #16213e;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .panel {
+    position: relative;
+  }
+  .panel-divider {
+    width: 2px;
+    background: linear-gradient(to bottom, transparent, #333366, transparent);
+  }
+  .controls {
+    margin-top: 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    width: 800px;
+  }
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    justify-content: center;
+  }
+  .slider-row label {
+    font-size: 0.95rem;
+    min-width: 40px;
+    text-align: right;
+    color: #ccccdd;
+  }
+  .slider-row input[type=range] {
+    width: 400px;
+    accent-color: #e6a817;
+    cursor: pointer;
+  }
+  .slider-val {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #e6a817;
+    min-width: 50px;
+  }
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .preset-btn {
+    background: #222244;
+    border: 1px solid #444466;
+    color: #ccccdd;
+    padding: 7px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+  }
+  .preset-btn:hover {
+    background: #333366;
+    border-color: #e6a817;
+    color: #ffffff;
+  }
+  .preset-btn.active {
+    background: #e6a81722;
+    border-color: #e6a817;
+    color: #e6a817;
+  }
+  .readout {
+    display: flex;
+    gap: 28px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+  .readout-item {
+    text-align: center;
+  }
+  .readout-label {
+    font-size: 0.75rem;
+    color: #8888aa;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .readout-value {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #ffffff;
+    font-variant-numeric: tabular-nums;
+  }
+  .aha-box {
+    margin-top: 14px;
+    background: #222244;
+    border-left: 3px solid #9b59b6;
+    padding: 10px 16px;
+    border-radius: 0 8px 8px 0;
+    font-size: 0.88rem;
+    color: #bbbbdd;
+    max-width: 800px;
+    line-height: 1.5;
+  }
+  .aha-box strong { color: #e6a817; }
+  svg text { font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; }
+</style>
+</head>
+<body>
+
+<h1>Sweeping θ, Watching R²</h1>
+<p class="subtitle">R² is not an algebraic ratio — it is a geometric angle</p>
+
+<div class="main-container">
+  <div class="panel" id="triangle-panel"></div>
+  <div class="panel-divider"></div>
+  <div class="panel" id="curve-panel"></div>
+</div>
+
+<div class="controls">
+  <div class="slider-row">
+    <label>θ</label>
+    <input type="range" id="theta-slider" min="0" max="90" step="0.5" value="30"
+           title="Drag to change the angle θ between 0° and 90°">
+    <span class="slider-val" id="theta-display">30°</span>
+  </div>
+  <div class="btn-row">
+    <button class="preset-btn" data-theta="0" title="θ = 0°: ŷ = y, residuals vanish">Perfect fit (θ=0°)</button>
+    <button class="preset-btn active" data-theta="30" title="θ = 30°: R² = 0.75">Good (θ=30°)</button>
+    <button class="preset-btn" data-theta="60" title="θ = 60°: R² = 0.25">Mediocre (θ=60°)</button>
+    <button class="preset-btn" data-theta="90" title="θ = 90°: ŷ ⊥ y, no explanatory power">No fit (θ=90°)</button>
+  </div>
+  <div class="readout">
+    <div class="readout-item"><div class="readout-label">θ</div><div class="readout-value" id="ro-theta">30°</div></div>
+    <div class="readout-item"><div class="readout-label">cos θ</div><div class="readout-value" id="ro-cos">0.866</div></div>
+    <div class="readout-item"><div class="readout-label">R² = cos²θ</div><div class="readout-value" id="ro-r2">0.750</div></div>
+    <div class="readout-item"><div class="readout-label">SSR / SST</div><div class="readout-value" id="ro-ssr">0.750</div></div>
+  </div>
+</div>
+
+<div class="aha-box">
+  <strong>Aha!</strong> R² = cos²θ is a purely geometric quantity — the squared cosine of the angle
+  between the data vector <strong>y</strong> and its projection <strong>ŷ</strong>.
+  For instance, R² = 0.75 corresponds to θ = 30°, not some arbitrary threshold.
+</div>
+
+<script>
+const W_LEFT = 450, W_RIGHT = 350, H = 500;
+const pad = 50;
+
+// ── Left panel: right triangle ──
+const svgL = d3.select('#triangle-panel')
+  .append('svg')
+  .attr('width', W_LEFT)
+  .attr('height', H)
+  .style('background', 'transparent');
+
+// origin of triangle
+const ox = 80, oy = H - 70;
+const armLen = 300;
+
+// static label
+svgL.append('text').attr('x', W_LEFT/2).attr('y', 28)
+  .attr('text-anchor', 'middle').attr('fill', '#8888aa').attr('font-size', 13)
+  .text('Right triangle: y, ŷ, and residual');
+
+// arc for angle
+const arcG = svgL.append('path')
+  .attr('fill', 'none').attr('stroke', '#e6a817').attr('stroke-width', 1.5)
+  .attr('opacity', 0.7);
+
+// angle label
+const angleLbl = svgL.append('text')
+  .attr('fill', '#e6a817').attr('font-size', 13).attr('font-weight', 600);
+
+// triangle edges
+const edgeHyp = svgL.append('line').attr('stroke', '#e6a817').attr('stroke-width', 3).attr('stroke-linecap', 'round');
+const edgeAdj = svgL.append('line').attr('stroke', '#50c878').attr('stroke-width', 3).attr('stroke-linecap', 'round');
+const edgeOpp = svgL.append('line').attr('stroke', '#e74c3c').attr('stroke-width', 2.5).attr('stroke-dasharray', '6,4').attr('stroke-linecap', 'round');
+
+// right-angle box
+const raBox = svgL.append('path').attr('fill', 'none').attr('stroke', '#888').attr('stroke-width', 1);
+
+// vertex dots
+const dotO = svgL.append('circle').attr('r', 4).attr('fill', '#ccccdd');
+const dotY = svgL.append('circle').attr('r', 5).attr('fill', '#e6a817');
+const dotYhat = svgL.append('circle').attr('r', 5).attr('fill', '#50c878');
+
+// labels
+const lblY = svgL.append('text').attr('fill', '#e6a817').attr('font-size', 14).attr('font-weight', 600);
+const lblYhat = svgL.append('text').attr('fill', '#50c878').attr('font-size', 14).attr('font-weight', 600);
+const lblE = svgL.append('text').attr('fill', '#e74c3c').attr('font-size', 13).attr('font-weight', 600);
+const lblHyp = svgL.append('text').attr('fill', '#e6a81799').attr('font-size', 12);
+const lblAdj = svgL.append('text').attr('fill', '#50c87899').attr('font-size', 12);
+const lblOpp = svgL.append('text').attr('fill', '#e74c3c99').attr('font-size', 12);
+
+// ── Right panel: R² curve ──
+const svgR = d3.select('#curve-panel')
+  .append('svg')
+  .attr('width', W_RIGHT)
+  .attr('height', H)
+  .style('background', 'transparent');
+
+const marginR = { top: 50, right: 30, bottom: 50, left: 55 };
+const cw = W_RIGHT - marginR.left - marginR.right;
+const ch = H - marginR.top - marginR.bottom;
+
+const gR = svgR.append('g').attr('transform', `translate(${marginR.left},${marginR.top})`);
+
+const xScale = d3.scaleLinear().domain([0, 90]).range([0, cw]);
+const yScale = d3.scaleLinear().domain([0, 1]).range([ch, 0]);
+
+// grid
+[0.25, 0.5, 0.75].forEach(v => {
+  gR.append('line')
+    .attr('x1', 0).attr('x2', cw)
+    .attr('y1', yScale(v)).attr('y2', yScale(v))
+    .attr('stroke', '#333355').attr('stroke-dasharray', '4,4');
+  gR.append('text')
+    .attr('x', -8).attr('y', yScale(v) + 4)
+    .attr('text-anchor', 'end').attr('fill', '#666688').attr('font-size', 11)
+    .text(v);
+});
+
+// axes
+gR.append('g')
+  .attr('transform', `translate(0,${ch})`)
+  .call(d3.axisBottom(xScale).tickValues([0, 15, 30, 45, 60, 75, 90]).tickFormat(d => d + '°'))
+  .call(g => g.selectAll('line,path').attr('stroke', '#555577'))
+  .call(g => g.selectAll('text').attr('fill', '#8888aa').attr('font-size', 11));
+
+gR.append('g')
+  .call(d3.axisLeft(yScale).ticks(5))
+  .call(g => g.selectAll('line,path').attr('stroke', '#555577'))
+  .call(g => g.selectAll('text').attr('fill', '#8888aa').attr('font-size', 11));
+
+// axis labels
+gR.append('text').attr('x', cw/2).attr('y', ch + 40)
+  .attr('text-anchor', 'middle').attr('fill', '#8888aa').attr('font-size', 13).text('θ (degrees)');
+gR.append('text').attr('x', -42).attr('y', ch/2)
+  .attr('text-anchor', 'middle').attr('fill', '#8888aa').attr('font-size', 13)
+  .attr('transform', `rotate(-90, -42, ${ch/2})`).text('R² = cos²θ');
+
+svgR.append('text').attr('x', W_RIGHT/2).attr('y', 28)
+  .attr('text-anchor', 'middle').attr('fill', '#8888aa').attr('font-size', 13)
+  .text('R² = cos²θ vs. θ');
+
+// curve
+const curveData = d3.range(0, 90.5, 0.5).map(d => ({ theta: d, r2: Math.cos(d * Math.PI / 180) ** 2 }));
+const line = d3.line()
+  .x(d => xScale(d.theta))
+  .y(d => yScale(d.r2))
+  .curve(d3.curveBasis);
+
+gR.append('path')
+  .datum(curveData)
+  .attr('d', line)
+  .attr('fill', 'none')
+  .attr('stroke', '#9b59b6')
+  .attr('stroke-width', 2.5)
+  .attr('stroke-linecap', 'round');
+
+// tracking lines
+const trackVLine = gR.append('line').attr('stroke', '#e6a817').attr('stroke-width', 1).attr('stroke-dasharray', '3,3').attr('opacity', 0.6);
+const trackHLine = gR.append('line').attr('stroke', '#e6a817').attr('stroke-width', 1).attr('stroke-dasharray', '3,3').attr('opacity', 0.6);
+
+// tracking dot
+const trackDot = gR.append('circle').attr('r', 7).attr('fill', '#e6a817')
+  .attr('stroke', '#1a1a2e').attr('stroke-width', 2);
+
+// glow
+const trackGlow = gR.append('circle').attr('r', 14).attr('fill', 'none')
+  .attr('stroke', '#e6a817').attr('stroke-width', 1).attr('opacity', 0.3);
+
+// ── Update ──
+const slider = document.getElementById('theta-slider');
+const thetaDisp = document.getElementById('theta-display');
+const presetBtns = document.querySelectorAll('.preset-btn');
+
+function update(thetaDeg) {
+  const thetaRad = thetaDeg * Math.PI / 180;
+  const cosT = Math.cos(thetaRad);
+  const sinT = Math.sin(thetaRad);
+  const r2 = cosT * cosT;
+
+  // readouts
+  thetaDisp.textContent = thetaDeg + '°';
+  document.getElementById('ro-theta').textContent = thetaDeg + '°';
+  document.getElementById('ro-cos').textContent = cosT.toFixed(3);
+  document.getElementById('ro-r2').textContent = r2.toFixed(3);
+  document.getElementById('ro-ssr').textContent = r2.toFixed(3);
+
+  // highlight active preset
+  presetBtns.forEach(b => {
+    b.classList.toggle('active', parseFloat(b.dataset.theta) === thetaDeg);
+  });
+
+  // triangle geometry
+  // hypotenuse along angle theta from horizontal
+  const yTip = [ox + armLen * cosT, oy - armLen * sinT]; // tip of y (gold)
+  const yHat = [ox + armLen * cosT, oy]; // projection on horizontal (green)
+
+  // clamp for near-zero lengths
+  edgeHyp.attr('x1', ox).attr('y1', oy).attr('x2', yTip[0]).attr('y2', yTip[1]);
+  edgeAdj.attr('x1', ox).attr('y1', oy).attr('x2', yHat[0]).attr('y2', yHat[1]);
+  edgeOpp.attr('x1', yHat[0]).attr('y1', yHat[1]).attr('x2', yTip[0]).attr('y2', yTip[1]);
+
+  dotO.attr('cx', ox).attr('cy', oy);
+  dotY.attr('cx', yTip[0]).attr('cy', yTip[1]);
+  dotYhat.attr('cx', yHat[0]).attr('cy', yHat[1]);
+
+  lblY.attr('x', yTip[0] + 10).attr('y', yTip[1] - 8).text('y');
+  lblYhat.attr('x', yHat[0] + 8).attr('y', yHat[1] + 20).text('ŷ');
+
+  // edge labels
+  const mx1 = (ox + yTip[0]) / 2, my1 = (oy + yTip[1]) / 2;
+  lblHyp.attr('x', mx1 - 16).attr('y', my1 - 8).text('‖y‖ (SST½)');
+
+  const mx2 = (ox + yHat[0]) / 2;
+  lblAdj.attr('x', mx2).attr('y', oy + 22).attr('text-anchor', 'middle').text('‖ŷ‖ (SSR½)');
+
+  const mx3 = (yHat[0] + yTip[0]) / 2;
+  const my3 = (yHat[1] + yTip[1]) / 2;
+  lblOpp.attr('x', mx3 + 12).attr('y', my3).text('‖e‖ (SSE½)');
+
+  lblE.attr('x', yTip[0] + 10).attr('y', (yTip[1] + yHat[1]) / 2 + 4).text('e');
+
+  // right-angle box at yHat
+  const boxSize = 12;
+  if (thetaDeg > 2 && thetaDeg < 88) {
+    raBox.attr('d', `M${yHat[0]},${yHat[1] - boxSize} L${yHat[0] - boxSize},${yHat[1] - boxSize} L${yHat[0] - boxSize},${yHat[1]}`).attr('opacity', 1);
+  } else {
+    raBox.attr('opacity', 0);
+  }
+
+  // angle arc
+  const arcR = 40;
+  if (thetaDeg > 1) {
+    const arc = d3.arc()({
+      innerRadius: arcR - 1,
+      outerRadius: arcR + 1,
+      startAngle: -Math.PI / 2,
+      endAngle: -Math.PI / 2 + thetaRad
+    });
+    // transform: the arc generator draws from 12-o'clock, we need from 3-o'clock
+    arcG.attr('d', d3.arc()({
+      innerRadius: arcR - 0.5,
+      outerRadius: arcR + 0.5,
+      startAngle: 0,
+      endAngle: thetaRad
+    })).attr('transform', `translate(${ox},${oy}) rotate(-90)`).attr('opacity', 0.8);
+  } else {
+    arcG.attr('opacity', 0);
+  }
+
+  angleLbl.attr('x', ox + arcR * 0.7 * Math.cos(thetaRad / 2) + 10)
+    .attr('y', oy - arcR * 0.7 * Math.sin(thetaRad / 2))
+    .text('θ = ' + thetaDeg + '°');
+
+  // right panel tracking
+  const cx = xScale(thetaDeg);
+  const cy = yScale(r2);
+  trackDot.attr('cx', cx).attr('cy', cy);
+  trackGlow.attr('cx', cx).attr('cy', cy);
+  trackVLine.attr('x1', cx).attr('x2', cx).attr('y1', cy).attr('y2', ch);
+  trackHLine.attr('x1', 0).attr('x2', cx).attr('y1', cy).attr('y2', cy);
+}
+
+slider.addEventListener('input', () => update(parseFloat(slider.value)));
+presetBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const v = parseFloat(btn.dataset.theta);
+    slider.value = v;
+    update(v);
+  });
+});
+
+update(30);
+</script>
+</body>
+</html>

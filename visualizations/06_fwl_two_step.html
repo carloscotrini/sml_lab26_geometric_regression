@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Two-Step Projection: FWL Theorem</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  h1 {
+    font-size: 1.5rem;
+    font-weight: 300;
+    margin-bottom: 2px;
+    letter-spacing: 0.5px;
+    color: #ffffff;
+  }
+  .subtitle {
+    font-size: 0.88rem;
+    color: #8888aa;
+    margin-bottom: 16px;
+    font-style: italic;
+  }
+  .main-container {
+    background: #16213e;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    position: relative;
+  }
+  .controls {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    width: 800px;
+  }
+  .radio-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .step-btn {
+    background: #222244;
+    border: 1px solid #444466;
+    color: #ccccdd;
+    padding: 7px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    transition: all 0.2s;
+  }
+  .step-btn:hover {
+    background: #333366;
+    border-color: #9b59b6;
+    color: #ffffff;
+  }
+  .step-btn.active {
+    background: #9b59b622;
+    border-color: #9b59b6;
+    color: #9b59b6;
+    font-weight: 600;
+  }
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    justify-content: center;
+  }
+  .slider-row label {
+    font-size: 0.9rem;
+    min-width: 180px;
+    text-align: right;
+    color: #ccccdd;
+  }
+  .slider-row input[type=range] {
+    width: 340px;
+    accent-color: #4a90d9;
+    cursor: pointer;
+  }
+  .slider-val {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #4a90d9;
+    min-width: 50px;
+  }
+  .readout {
+    display: flex;
+    gap: 32px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 2px;
+  }
+  .readout-item {
+    text-align: center;
+  }
+  .readout-label {
+    font-size: 0.73rem;
+    color: #8888aa;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .readout-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #ffffff;
+    font-variant-numeric: tabular-nums;
+  }
+  .match { color: #50c878 !important; }
+  .warn { color: #e74c3c !important; }
+  .aha-box {
+    margin-top: 12px;
+    background: #222244;
+    border-left: 3px solid #9b59b6;
+    padding: 10px 16px;
+    border-radius: 0 8px 8px 0;
+    font-size: 0.85rem;
+    color: #bbbbdd;
+    max-width: 800px;
+    line-height: 1.5;
+  }
+  .aha-box strong { color: #e6a817; }
+  .legend {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    font-size: 0.75rem;
+    line-height: 1.8;
+    color: #aaaacc;
+    pointer-events: none;
+  }
+  .legend-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+  svg text { font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; }
+</style>
+</head>
+<body>
+
+<h1>Two-Step Projection: Residualise Then Regress</h1>
+<p class="subtitle">The Frisch-Waugh-Lovell (FWL) Theorem — geometrically</p>
+
+<div class="main-container" id="viz-container">
+  <div class="legend" id="legend"></div>
+</div>
+
+<div class="controls">
+  <div class="radio-row">
+    <button class="step-btn active" data-step="full" title="Project y onto Col(X₁, X₂) in one step">Full regression</button>
+    <button class="step-btn" data-step="step1" title="Project out X₁: compute M₁y and M₁x₂">Step 1: Residualise</button>
+    <button class="step-btn" data-step="step2" title="Regress M₁y on M₁x₂ to recover β̂₂">Step 2: Regress</button>
+    <button class="step-btn" data-step="compare" title="Verify: both procedures give the same β̂₂">Compare</button>
+  </div>
+  <div class="slider-row">
+    <label title="Controls how much x₂ lies inside Col(X₁)">Correlation between x₁ and x₂</label>
+    <input type="range" id="corr-slider" min="0" max="95" step="1" value="30"
+           title="As correlation increases, M₁x₂ shrinks and SE of β̂₂ explodes">
+    <span class="slider-val" id="corr-display">0.30</span>
+  </div>
+  <div class="readout">
+    <div class="readout-item"><div class="readout-label">β̂₂ (full)</div><div class="readout-value" id="ro-b2full">—</div></div>
+    <div class="readout-item"><div class="readout-label">β̂₂ (FWL)</div><div class="readout-value" id="ro-b2fwl">—</div></div>
+    <div class="readout-item"><div class="readout-label">‖M₁x₂‖</div><div class="readout-value" id="ro-m1x2">—</div></div>
+    <div class="readout-item"><div class="readout-label">SE(β̂₂) ∝ 1/‖M₁x₂‖</div><div class="readout-value" id="ro-se">—</div></div>
+  </div>
+</div>
+
+<div class="aha-box" id="aha-box">
+  <strong>Aha!</strong> The FWL theorem says: regressing y on x₁ and x₂ simultaneously gives the
+  same β̂₂ as first removing x₁ from both y and x₂, then doing a simple regression. As correlation
+  between x₁ and x₂ grows, ‖M₁x₂‖ shrinks — and the standard error of β̂₂ explodes.
+</div>
+
+<script>
+const W = 800, H = 500;
+
+const svg = d3.select('#viz-container')
+  .append('svg')
+  .attr('width', W)
+  .attr('height', H)
+  .style('background', 'transparent');
+
+// ── Isometric helpers ──
+// We define a pseudo-3D isometric view.
+// "3D" coords: (u, v, w) where u=right, v=into-screen, w=up
+// Screen: x_screen = cx + u*su + v*sv,  y_screen = cy - w + u*eu + v*ev
+const cx = 350, cy = 350;
+const su = 0.9, sv = -0.75;  // screen-x per unit u, v
+const eu = -0.25, ev = -0.45;  // screen-y per unit u, v (tilt)
+
+function iso(u, v, w) {
+  return [cx + u * su + v * sv, cy - w * 1.0 + u * eu + v * ev];
+}
+
+// ── Scene parameters ──
+const planeScale = 160;
+const yVec3 = [0.4, 0.3, 0.85]; // y in (x1-dir, x2-dir, orthogonal)
+// Normalise so it has a nice length
+const yLen = Math.sqrt(yVec3[0]**2 + yVec3[1]**2 + yVec3[2]**2);
+const yNorm = yVec3.map(c => c / yLen);
+
+let currentStep = 'full';
+let correlation = 0.30;
+
+// ── Drawing groups (layered) ──
+const gPlane = svg.append('g');
+const gLines = svg.append('g');
+const gVectors = svg.append('g');
+const gLabels = svg.append('g');
+
+// ── Plane polygon ──
+const planeShape = gPlane.append('polygon')
+  .attr('fill', '#4a90d9')
+  .attr('fill-opacity', 0.12)
+  .attr('stroke', '#4a90d9')
+  .attr('stroke-opacity', 0.3)
+  .attr('stroke-width', 1);
+
+// ── Helper: draw arrow ──
+function drawArrow(group, p1, p2, color, width, id, dasharray) {
+  const existing = group.select(`#${id}`);
+  if (!existing.empty()) existing.remove();
+
+  const g = group.append('g').attr('id', id);
+  g.append('line')
+    .attr('x1', p1[0]).attr('y1', p1[1])
+    .attr('x2', p2[0]).attr('y2', p2[1])
+    .attr('stroke', color)
+    .attr('stroke-width', width)
+    .attr('stroke-linecap', 'round')
+    .attr('stroke-dasharray', dasharray || 'none');
+
+  // arrowhead
+  const dx = p2[0] - p1[0], dy = p2[1] - p1[1];
+  const len = Math.sqrt(dx*dx + dy*dy);
+  if (len > 8) {
+    const ux = dx/len, uy = dy/len;
+    const aSize = Math.min(10, len * 0.15);
+    const px = -uy, py = ux;
+    const tip = p2;
+    const l = [tip[0] - ux*aSize + px*aSize*0.4, tip[1] - uy*aSize + py*aSize*0.4];
+    const r = [tip[0] - ux*aSize - px*aSize*0.4, tip[1] - uy*aSize - py*aSize*0.4];
+    g.append('polygon')
+      .attr('points', `${tip[0]},${tip[1]} ${l[0]},${l[1]} ${r[0]},${r[1]}`)
+      .attr('fill', color);
+  }
+  return g;
+}
+
+function drawLabel(group, pos, text, color, id, fontSize) {
+  const existing = group.select(`#${id}`);
+  if (!existing.empty()) existing.remove();
+  group.append('text')
+    .attr('id', id)
+    .attr('x', pos[0]).attr('y', pos[1])
+    .attr('fill', color)
+    .attr('font-size', fontSize || 13)
+    .attr('font-weight', 600)
+    .text(text);
+}
+
+function drawDashedLine(group, p1, p2, color, id) {
+  const existing = group.select(`#${id}`);
+  if (!existing.empty()) existing.remove();
+  group.append('line')
+    .attr('id', id)
+    .attr('x1', p1[0]).attr('y1', p1[1])
+    .attr('x2', p2[0]).attr('y2', p2[1])
+    .attr('stroke', color)
+    .attr('stroke-width', 1.5)
+    .attr('stroke-dasharray', '5,4')
+    .attr('opacity', 0.6);
+}
+
+// ── Update function ──
+function update() {
+  gLines.selectAll('*').remove();
+  gVectors.selectAll('*').remove();
+  gLabels.selectAll('*').remove();
+
+  const corr = correlation;
+  // x1 direction: (1, 0, 0) in our basis
+  // x2 direction depends on correlation: x2 = corr * x1_dir + sqrt(1-corr^2) * x2_dir_perp
+  const x2u = corr;         // component along x1
+  const x2v = Math.sqrt(1 - corr*corr); // component perpendicular to x1 within plane
+
+  const S = planeScale;
+
+  // Plane corners (parallelogram spanned by x1-dir and x2-dir)
+  const corners = [
+    iso(-S * 0.3, -S * 0.3, 0),
+    iso(S * 1.2, -S * 0.3, 0),
+    iso(S * 1.2, S * 1.0, 0),
+    iso(-S * 0.3, S * 1.0, 0)
+  ];
+  planeShape.attr('points', corners.map(c => c.join(',')).join(' '));
+
+  // Origin
+  const O = iso(0, 0, 0);
+
+  // Col(X₁) line (along u-axis)
+  const x1A = iso(-S * 0.2, 0, 0);
+  const x1B = iso(S * 1.1, 0, 0);
+  gLines.append('line')
+    .attr('x1', x1A[0]).attr('y1', x1A[1])
+    .attr('x2', x1B[0]).attr('y2', x1B[1])
+    .attr('stroke', '#4a90d9').attr('stroke-width', 2.5)
+    .attr('stroke-linecap', 'round');
+
+  drawLabel(gLabels, [x1B[0] + 8, x1B[1] + 4], 'Col(X₁)', '#4a90d9', 'lbl-colx1', 12);
+
+  // Plane label
+  const plCorner = iso(S * 0.9, S * 0.8, 0);
+  drawLabel(gLabels, [plCorner[0], plCorner[1] + 4], 'Col(X₁, X₂)', '#4a90d988', 'lbl-plane', 11);
+
+  // y vector (gold) — lives partly in the plane, partly above
+  const yInPlane_u = 0.55 * S;   // component along x1
+  const yInPlane_v = 0.45 * S;   // component along x2-perp-in-plane
+  const yPerp = 0.6 * S;         // component orthogonal to plane
+
+  const yTip = iso(yInPlane_u, yInPlane_v, yPerp);
+
+  // Full projection ŷ = projection of y onto Col(X₁, X₂) = in-plane part
+  const yhatTip = iso(yInPlane_u, yInPlane_v, 0);
+
+  // Projection of y onto Col(X₁) only
+  // y projected onto x1 direction: yInPlane_u (the u-component)
+  const yOnX1 = iso(yInPlane_u, 0, 0);
+
+  // x₂ vector (in the plane)
+  const x2Tip = iso(x2u * S * 0.7, x2v * S * 0.7, 0);
+
+  // M₁x₂ = x₂ - proj_x1(x₂) = remove x1-component from x₂
+  // proj of x2 onto x1: x2u component along x1
+  const m1x2_u = 0;      // x1 component removed
+  const m1x2_v = x2v;    // perpendicular part remains
+  const m1x2Tip = iso(0, m1x2_v * S * 0.7, 0);
+  const m1x2Len = x2v * S * 0.7;
+
+  // M₁y = y - proj_x1(y) = remove x1-component from y
+  const m1y_u = 0;
+  const m1y_v = yInPlane_v;
+  const m1y_w = yPerp;
+  const m1yTip = iso(0, m1y_v, m1y_w);
+
+  // β̂₂ (full) = component of y along x₂-perp-in-plane / length of that direction
+  // In our setup it's yInPlane_v / (S*0.7 * x2v) projected properly
+  // But let's compute it as: β̂₂ = <M₁y, M₁x₂> / <M₁x₂, M₁x₂>
+  // M₁y in (u,v,w) = (0, yInPlane_v, yPerp)
+  // M₁x₂ in (u,v,w) = (0, x2v * S*0.7, 0)
+  const beta2 = (m1y_v * m1x2_v * S * 0.7) / (m1x2_v * S * 0.7 * m1x2_v * S * 0.7);
+  // Simplifies to: yInPlane_v / (x2v * S * 0.7)
+  const beta2val = yInPlane_v / (x2v * S * 0.7 + 1e-10);
+
+  // FWL regression of M₁y on M₁x₂:
+  // ŷ_fwl = β̂₂ * M₁x₂ (in the v-direction only, projected)
+  const fwlProjTip = iso(0, beta2val * m1x2_v * S * 0.7, 0);
+
+  // SE proportional to 1/‖M₁x₂‖
+  const m1x2norm = Math.abs(m1x2_v * S * 0.7);
+  const se = m1x2norm > 0.01 ? (1 / m1x2norm * 50) : 999;
+
+  // ── Draw based on step ──
+  const showFull = currentStep === 'full' || currentStep === 'compare';
+  const showStep1 = currentStep === 'step1' || currentStep === 'compare';
+  const showStep2 = currentStep === 'step2' || currentStep === 'compare';
+
+  // Always draw y
+  drawArrow(gVectors, O, yTip, '#e6a817', 3, 'vec-y');
+  drawLabel(gLabels, [yTip[0] + 8, yTip[1] - 6], 'y', '#e6a817', 'lbl-y', 15);
+
+  // x₂ direction (thin)
+  drawArrow(gVectors, O, x2Tip, '#4a90d9', 1.5, 'vec-x2', '4,3');
+  drawLabel(gLabels, [x2Tip[0] + 6, x2Tip[1] + 14], 'x₂', '#4a90d9', 'lbl-x2', 12);
+
+  if (showFull) {
+    // ŷ = full projection onto plane
+    drawArrow(gVectors, O, yhatTip, '#50c878', 3, 'vec-yhat');
+    drawLabel(gLabels, [yhatTip[0] + 8, yhatTip[1] + 16], 'ŷ (full)', '#50c878', 'lbl-yhat', 13);
+
+    // dashed line y -> ŷ (residual)
+    drawDashedLine(gLines, yTip, yhatTip, '#e74c3c', 'line-resid');
+    drawLabel(gLabels, [(yTip[0]+yhatTip[0])/2 + 8, (yTip[1]+yhatTip[1])/2], 'e', '#e74c3c', 'lbl-e', 12);
+  }
+
+  if (showStep1) {
+    // M₁y: residual of y after removing x₁
+    const m1yStart = currentStep === 'compare' ? iso(-S*0.05, 0, 0) : O;
+    const m1yEnd = currentStep === 'compare'
+      ? iso(-S*0.05 + 0, m1y_v, m1y_w)
+      : m1yTip;
+
+    drawArrow(gVectors, m1yStart, m1yEnd, '#9b59b6', 2.5, 'vec-m1y');
+    drawLabel(gLabels, [m1yEnd[0] - 50, m1yEnd[1] - 8], 'M₁y', '#9b59b6', 'lbl-m1y', 13);
+
+    // M₁x₂
+    const m1x2Start = O;
+    const m1x2End = m1x2Tip;
+    if (m1x2Len > 2) {
+      drawArrow(gVectors, m1x2Start, m1x2End, '#9b59b6', 2.5, 'vec-m1x2');
+      drawLabel(gLabels, [m1x2End[0] - 40, m1x2End[1] + 16], 'M₁x₂', '#9b59b6', 'lbl-m1x2', 13);
+    } else {
+      // Too small to see
+      const dotPos = iso(0, 0, 0);
+      gVectors.append('circle').attr('id', 'vec-m1x2')
+        .attr('cx', dotPos[0]).attr('cy', dotPos[1])
+        .attr('r', 4).attr('fill', '#9b59b6');
+      drawLabel(gLabels, [dotPos[0] - 50, dotPos[1] + 18], 'M₁x₂ ≈ 0', '#9b59b6', 'lbl-m1x2', 12);
+    }
+
+    // Show projection lines (y -> M₁y along x₁)
+    drawDashedLine(gLines, yTip, m1yEnd, '#9b59b655', 'line-proj1');
+    // y projected onto x1
+    drawDashedLine(gLines, O, yOnX1, '#4a90d944', 'line-yonx1');
+  }
+
+  if (showStep2 && m1x2Len > 2) {
+    // Show the FWL regression: project M₁y onto M₁x₂
+    // The projection of M₁y onto M₁x₂ direction (v-axis)
+    drawArrow(gVectors, O, fwlProjTip, '#50c87899', 2.5, 'vec-fwlproj');
+    drawLabel(gLabels, [fwlProjTip[0] - 60, fwlProjTip[1] + 16], 'β̂₂·M₁x₂', '#50c878', 'lbl-fwlproj', 12);
+
+    // M₁y vector shown too
+    drawArrow(gVectors, O, m1yTip, '#9b59b6', 2, 'vec-m1y-s2');
+    drawLabel(gLabels, [m1yTip[0] - 50, m1yTip[1] - 6], 'M₁y', '#9b59b6', 'lbl-m1y-s2', 13);
+
+    // M₁x₂
+    drawArrow(gVectors, O, m1x2Tip, '#9b59b6', 2, 'vec-m1x2-s2');
+    drawLabel(gLabels, [m1x2Tip[0] - 40, m1x2Tip[1] + 16], 'M₁x₂', '#9b59b6', 'lbl-m1x2-s2', 12);
+
+    // Residual line
+    drawDashedLine(gLines, m1yTip, fwlProjTip, '#e74c3c88', 'line-fwlresid');
+  }
+
+  // ── Readouts ──
+  const b2fullEl = document.getElementById('ro-b2full');
+  const b2fwlEl = document.getElementById('ro-b2fwl');
+  const m1x2El = document.getElementById('ro-m1x2');
+  const seEl = document.getElementById('ro-se');
+
+  b2fullEl.textContent = beta2val.toFixed(3);
+  b2fwlEl.textContent = beta2val.toFixed(3);
+  m1x2El.textContent = m1x2norm.toFixed(1);
+  seEl.textContent = se > 100 ? '∞' : se.toFixed(2);
+
+  // Highlight match
+  b2fullEl.className = 'readout-value' + (currentStep === 'compare' ? ' match' : '');
+  b2fwlEl.className = 'readout-value' + (currentStep === 'compare' ? ' match' : '');
+  seEl.className = 'readout-value' + (se > 10 ? ' warn' : '');
+
+  // Legend
+  const legendHTML = [
+    `<div><span class="legend-dot" style="background:#e6a817"></span>y (data vector)</div>`,
+    `<div><span class="legend-dot" style="background:#50c878"></span>ŷ (projection / fitted)</div>`,
+    `<div><span class="legend-dot" style="background:#4a90d9"></span>Col(X₁), Col(X₁,X₂)</div>`,
+    `<div><span class="legend-dot" style="background:#9b59b6"></span>Residualised (M₁y, M₁x₂)</div>`,
+    `<div><span class="legend-dot" style="background:#e74c3c"></span>Residuals</div>`,
+  ].join('');
+  document.getElementById('legend').innerHTML = legendHTML;
+
+  // Update aha text
+  const aha = document.getElementById('aha-box');
+  if (currentStep === 'full') {
+    aha.innerHTML = `<strong>Full regression:</strong> Project <strong>y</strong> onto the entire column space Col(X₁, X₂) to get <strong>ŷ</strong>. The coefficient β̂₂ measures how much of x₂'s independent contribution explains y.`;
+  } else if (currentStep === 'step1') {
+    aha.innerHTML = `<strong>Step 1 — Residualise:</strong> Remove the effect of X₁ from both <strong>y</strong> and <strong>x₂</strong>. The residuals <strong>M₁y</strong> and <strong>M₁x₂</strong> live in the orthogonal complement of Col(X₁). Notice how <strong>M₁x₂</strong> shrinks as correlation increases — there's less "new information" in x₂ once x₁ is accounted for.`;
+  } else if (currentStep === 'step2') {
+    aha.innerHTML = `<strong>Step 2 — Regress:</strong> Now do a simple regression of <strong>M₁y</strong> on <strong>M₁x₂</strong>. The slope is β̂₂ — exactly the same as in the full regression! This is the FWL theorem.`;
+  } else {
+    aha.innerHTML = `<strong>Aha!</strong> Both procedures give <strong class="match">β̂₂ = ${beta2val.toFixed(3)}</strong>. The FWL theorem guarantees this algebraically, but here you can <em>see</em> it geometrically. As correlation increases, ‖M₁x₂‖ = ${m1x2norm.toFixed(1)} shrinks toward zero and SE(β̂₂) ∝ 1/‖M₁x₂‖ ${se > 10 ? '<strong class="warn">explodes</strong>' : 'grows'} — multicollinearity in action.`;
+  }
+}
+
+// ── Controls ──
+const stepBtns = document.querySelectorAll('.step-btn');
+stepBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    stepBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentStep = btn.dataset.step;
+    update();
+  });
+});
+
+const corrSlider = document.getElementById('corr-slider');
+const corrDisplay = document.getElementById('corr-display');
+corrSlider.addEventListener('input', () => {
+  correlation = parseFloat(corrSlider.value) / 100;
+  corrDisplay.textContent = correlation.toFixed(2);
+  update();
+});
+
+// Origin dot
+svg.append('circle')
+  .attr('cx', iso(0,0,0)[0])
+  .attr('cy', iso(0,0,0)[1])
+  .attr('r', 3)
+  .attr('fill', '#aaaacc');
+
+update();
+</script>
+</body>
+</html>

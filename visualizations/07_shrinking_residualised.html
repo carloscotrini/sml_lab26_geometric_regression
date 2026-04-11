@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shrinking the Residualised Predictor</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  h1 {
+    font-size: 1.6em;
+    font-weight: 300;
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+    color: #f0f0f0;
+  }
+  .subtitle {
+    font-size: 0.85em;
+    color: #888;
+    margin-bottom: 16px;
+  }
+  .main-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+  .top-row {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+  }
+  svg { display: block; }
+  .vector-canvas {
+    background: #16213e;
+    border-radius: 8px;
+    border: 1px solid #2a2a4a;
+  }
+  .plot-canvas {
+    background: #16213e;
+    border-radius: 8px;
+    border: 1px solid #2a2a4a;
+  }
+  .controls {
+    display: flex;
+    gap: 32px;
+    margin-top: 16px;
+    padding: 14px 24px;
+    background: #16213e;
+    border-radius: 8px;
+    border: 1px solid #2a2a4a;
+  }
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .control-group label {
+    font-size: 0.8em;
+    color: #aaa;
+  }
+  .control-group input[type="range"] {
+    width: 220px;
+    accent-color: #9b59b6;
+    cursor: pointer;
+  }
+  .control-group .val {
+    font-size: 0.85em;
+    font-weight: 600;
+    color: #e0e0e0;
+    font-variant-numeric: tabular-nums;
+  }
+  .readouts {
+    display: flex;
+    gap: 28px;
+    margin-top: 12px;
+    padding: 10px 24px;
+    background: #16213e;
+    border-radius: 8px;
+    border: 1px solid #2a2a4a;
+  }
+  .readout {
+    text-align: center;
+  }
+  .readout .label {
+    font-size: 0.7em;
+    color: #888;
+    margin-bottom: 2px;
+  }
+  .readout .value {
+    font-size: 1.05em;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .readout .value.warn { color: #e74c3c; }
+  .readout .value.ok { color: #50c878; }
+  .readout .value.mid { color: #f39c12; }
+
+  /* Arrowhead defs */
+  .arrow-x1 { fill: #4a90d9; }
+  .arrow-x2 { fill: #e74c3c; }
+  .arrow-mx2 { fill: #9b59b6; }
+
+  /* Tooltip */
+  .tooltip-box {
+    position: absolute;
+    background: #222244;
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 0.75em;
+    color: #ddd;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 10;
+  }
+</style>
+</head>
+<body>
+<h1>Shrinking the Residualised Predictor</h1>
+<p class="subtitle">How collinearity inflates standard errors: the geometry of M&#x2081;x&#x2082;</p>
+
+<div class="main-container">
+  <div class="top-row">
+    <svg id="vectorCanvas" class="vector-canvas" width="420" height="380"></svg>
+    <svg id="plotCanvas" class="plot-canvas" width="420" height="380"></svg>
+  </div>
+  <div class="controls">
+    <div class="control-group">
+      <label>Correlation r(x&#x2081;, x&#x2082;)</label>
+      <input type="range" id="corrSlider" min="-0.99" max="0.99" step="0.01" value="0.0">
+      <span class="val" id="corrVal">0.00</span>
+    </div>
+    <div class="control-group">
+      <label>Noise level &#x3C3;</label>
+      <input type="range" id="noiseSlider" min="0.1" max="3.0" step="0.05" value="1.0">
+      <span class="val" id="noiseVal">1.00</span>
+    </div>
+  </div>
+  <div class="readouts">
+    <div class="readout">
+      <div class="label">r(x&#x2081;, x&#x2082;)</div>
+      <div class="value" id="readR">0.00</div>
+    </div>
+    <div class="readout">
+      <div class="label">&#x2016;M&#x2081;x&#x2082;&#x2016;</div>
+      <div class="value" id="readNorm">1.00</div>
+    </div>
+    <div class="readout">
+      <div class="label">SE(&#x3B2;&#x302;&#x2082;)</div>
+      <div class="value" id="readSE">1.00</div>
+    </div>
+    <div class="readout">
+      <div class="label">VIF</div>
+      <div class="value" id="readVIF">1.00</div>
+    </div>
+  </div>
+</div>
+
+<div class="tooltip-box" id="tooltip"></div>
+
+<script>
+(function() {
+  // ── Configuration ──
+  const VW = 420, VH = 380;
+  const PW = 420, PH = 380;
+  const vecMargin = { top: 40, right: 30, bottom: 40, left: 50 };
+  const plotMargin = { top: 40, right: 30, bottom: 50, left: 60 };
+
+  const vecW = VW - vecMargin.left - vecMargin.right;
+  const vecH = VH - vecMargin.top - vecMargin.bottom;
+  const pltW = PW - plotMargin.left - plotMargin.right;
+  const pltH = PH - plotMargin.top - plotMargin.bottom;
+
+  const x1Color = '#4a90d9';
+  const x2Color = '#e74c3c';
+  const mx2Color = '#9b59b6';
+  const projColor = '#555';
+
+  // ── Vector canvas setup ──
+  const svgVec = d3.select('#vectorCanvas');
+  // Arrowhead markers
+  const defs = svgVec.append('defs');
+  function addArrow(id, color) {
+    defs.append('marker')
+      .attr('id', id)
+      .attr('viewBox', '0 0 10 6')
+      .attr('refX', 10).attr('refY', 3)
+      .attr('markerWidth', 10).attr('markerHeight', 6)
+      .attr('orient', 'auto')
+      .append('path')
+      .attr('d', 'M0,0 L10,3 L0,6 Z')
+      .attr('fill', color);
+  }
+  addArrow('arr-x1', x1Color);
+  addArrow('arr-x2', x2Color);
+  addArrow('arr-mx2', mx2Color);
+  addArrow('arr-proj', projColor);
+
+  const gVec = svgVec.append('g')
+    .attr('transform', `translate(${vecMargin.left + vecW * 0.15}, ${vecMargin.top + vecH * 0.55})`);
+
+  // Title
+  svgVec.append('text')
+    .attr('x', VW / 2).attr('y', 24)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#ccc').attr('font-size', '13px')
+    .text('Vector Space');
+
+  // Scale for vectors
+  const vecScale = 120; // pixels per unit
+
+  // Static: x1 always points right
+  const x1 = [1, 0];
+
+  // Dashed projection line
+  const projLine = gVec.append('line')
+    .attr('stroke', projColor).attr('stroke-width', 1)
+    .attr('stroke-dasharray', '4,3').attr('opacity', 0.6);
+
+  // Right-angle indicator
+  const rightAngle = gVec.append('path')
+    .attr('stroke', '#888').attr('stroke-width', 1)
+    .attr('fill', 'none').attr('opacity', 0.7);
+
+  // Vectors as lines (drawn from origin)
+  const lineX1 = gVec.append('line')
+    .attr('x1', 0).attr('y1', 0)
+    .attr('stroke', x1Color).attr('stroke-width', 2.5)
+    .attr('marker-end', 'url(#arr-x1)');
+  const lineX2 = gVec.append('line')
+    .attr('x1', 0).attr('y1', 0)
+    .attr('stroke', x2Color).attr('stroke-width', 2.5)
+    .attr('marker-end', 'url(#arr-x2)');
+  const lineMx2 = gVec.append('line')
+    .attr('x1', 0).attr('y1', 0)
+    .attr('stroke', mx2Color).attr('stroke-width', 3)
+    .attr('marker-end', 'url(#arr-mx2)');
+
+  // Labels
+  const lblX1 = gVec.append('text').attr('fill', x1Color).attr('font-size', '13px').attr('font-weight', 600);
+  const lblX2 = gVec.append('text').attr('fill', x2Color).attr('font-size', '13px').attr('font-weight', 600);
+  const lblMx2 = gVec.append('text').attr('fill', mx2Color).attr('font-size', '13px').attr('font-weight', 600);
+
+  // ── SE Plot setup ──
+  const svgPlot = d3.select('#plotCanvas');
+  const gPlot = svgPlot.append('g')
+    .attr('transform', `translate(${plotMargin.left}, ${plotMargin.top})`);
+
+  svgPlot.append('text')
+    .attr('x', PW / 2).attr('y', 24)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#ccc').attr('font-size', '13px')
+    .text('SE(\u03B2\u0302\u2082) vs Correlation');
+
+  const xScale = d3.scaleLinear().domain([-1, 1]).range([0, pltW]);
+  const yScale = d3.scaleLinear().domain([0, 12]).range([pltH, 0]);
+
+  // Axes
+  const xAxis = d3.axisBottom(xScale).ticks(9).tickSize(-pltH).tickFormat(d3.format('.1f'));
+  const yAxis = d3.axisLeft(yScale).ticks(6).tickSize(-pltW);
+
+  gPlot.append('g')
+    .attr('transform', `translate(0, ${pltH})`)
+    .call(xAxis)
+    .call(g => {
+      g.selectAll('line').attr('stroke', '#2a2a4a');
+      g.selectAll('text').attr('fill', '#888').attr('font-size', '10px');
+      g.select('.domain').attr('stroke', '#444');
+    });
+  const gYAxis = gPlot.append('g')
+    .attr('class', 'y-axis')
+    .call(yAxis)
+    .call(g => {
+      g.selectAll('line').attr('stroke', '#2a2a4a');
+      g.selectAll('text').attr('fill', '#888').attr('font-size', '10px');
+      g.select('.domain').attr('stroke', '#444');
+    });
+
+  // Axis labels
+  gPlot.append('text')
+    .attr('x', pltW / 2).attr('y', pltH + 40)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#aaa').attr('font-size', '12px')
+    .text('r(x\u2081, x\u2082)');
+  gPlot.append('text')
+    .attr('transform', 'rotate(-90)')
+    .attr('x', -pltH / 2).attr('y', -42)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#aaa').attr('font-size', '12px')
+    .text('SE(\u03B2\u0302\u2082)');
+
+  // SE curve path
+  const seCurvePath = gPlot.append('path')
+    .attr('fill', 'none')
+    .attr('stroke', mx2Color)
+    .attr('stroke-width', 2.5)
+    .attr('opacity', 0.9);
+
+  // Filled area under curve
+  const seArea = gPlot.append('path')
+    .attr('fill', mx2Color)
+    .attr('opacity', 0.08);
+
+  // Current-point indicator
+  const indicator = gPlot.append('circle')
+    .attr('r', 6)
+    .attr('fill', mx2Color)
+    .attr('stroke', '#fff')
+    .attr('stroke-width', 2);
+
+  // Vertical dashed line at current r
+  const indicatorLine = gPlot.append('line')
+    .attr('stroke', mx2Color)
+    .attr('stroke-width', 1)
+    .attr('stroke-dasharray', '4,3')
+    .attr('opacity', 0.5);
+
+  // Horizontal dashed line at current SE
+  const indicatorLineH = gPlot.append('line')
+    .attr('stroke', mx2Color)
+    .attr('stroke-width', 1)
+    .attr('stroke-dasharray', '4,3')
+    .attr('opacity', 0.4);
+
+  // SE value label on plot
+  const seLabel = gPlot.append('text')
+    .attr('fill', mx2Color)
+    .attr('font-size', '11px')
+    .attr('font-weight', 600);
+
+  // ── Computation ──
+  function computeSE(r, sigma) {
+    // SE(beta2) = sigma / ||M1 x2|| = sigma / sqrt(1 - r^2)
+    const denom = Math.sqrt(1 - r * r);
+    return denom > 0.001 ? sigma / denom : sigma / 0.001;
+  }
+
+  function computeVIF(r) {
+    return 1 / (1 - r * r);
+  }
+
+  function update() {
+    const r = parseFloat(d3.select('#corrSlider').property('value'));
+    const sigma = parseFloat(d3.select('#noiseSlider').property('value'));
+
+    d3.select('#corrVal').text(r.toFixed(2));
+    d3.select('#noiseVal').text(sigma.toFixed(2));
+
+    // ── Vectors ──
+    // x1 = (1, 0), x2 direction at angle theta where cos(theta) = r
+    const theta = Math.acos(Math.max(-1, Math.min(1, r)));
+    const x2 = [Math.cos(theta), -Math.sin(theta)]; // negative y because SVG y is down
+
+    // Projection of x2 onto x1: proj = (x2 . x1) * x1 = r * x1
+    const proj = [r, 0];
+
+    // M1 x2 = x2 - proj
+    const mx2 = [x2[0] - proj[0], x2[1] - proj[1]];
+    const mx2Norm = Math.sqrt(mx2[0] * mx2[0] + mx2[1] * mx2[1]);
+
+    // Draw x1
+    lineX1.attr('x2', x1[0] * vecScale).attr('y2', x1[1] * vecScale);
+    lblX1.attr('x', x1[0] * vecScale + 10).attr('y', x1[1] * vecScale - 8).text('x\u2081');
+
+    // Draw x2
+    lineX2.attr('x2', x2[0] * vecScale).attr('y2', x2[1] * vecScale);
+    lblX2.attr('x', x2[0] * vecScale + 10).attr('y', x2[1] * vecScale - 8).text('x\u2082');
+
+    // Draw M1x2 (from origin in the residual direction, showing its actual length)
+    const mx2Px = [mx2[0] * vecScale, mx2[1] * vecScale];
+    lineMx2.attr('x2', mx2Px[0]).attr('y2', mx2Px[1]);
+    lblMx2.attr('x', mx2Px[0] + 10).attr('y', mx2Px[1] + 4).text('M\u2081x\u2082');
+
+    // Projection dashed line: from tip of x2 to projection point
+    projLine
+      .attr('x1', x2[0] * vecScale).attr('y1', x2[1] * vecScale)
+      .attr('x2', proj[0] * vecScale).attr('y2', proj[1] * vecScale);
+
+    // Right-angle indicator at the projection point
+    const raSize = 8;
+    if (mx2Norm > 0.05) {
+      // Unit vectors along x1 and along mx2
+      const ux = [1, 0]; // x1 direction
+      const umx = [mx2[0] / mx2Norm, mx2[1] / mx2Norm];
+      const raPx = proj[0] * vecScale;
+      const raPy = proj[1] * vecScale;
+      const rp1x = raPx + umx[0] * raSize;
+      const rp1y = raPy + umx[1] * raSize;
+      const rp2x = rp1x + ux[0] * raSize;
+      const rp2y = rp1y + ux[1] * raSize;
+      const rp3x = raPx + ux[0] * raSize;
+      const rp3y = raPy + ux[1] * raSize;
+      rightAngle.attr('d', `M${rp1x},${rp1y} L${rp2x},${rp2y} L${rp3x},${rp3y}`).attr('opacity', 0.7);
+    } else {
+      rightAngle.attr('opacity', 0);
+    }
+
+    // ── SE Plot ──
+    const se = computeSE(r, sigma);
+    const vif = computeVIF(r);
+
+    // Generate curve data
+    const curveData = [];
+    for (let rv = -0.99; rv <= 0.99; rv += 0.005) {
+      const sev = computeSE(rv, sigma);
+      if (sev < 15) curveData.push({ r: rv, se: sev });
+    }
+
+    // Clamp y scale
+    const maxSE = Math.min(12, d3.max(curveData, d => d.se) || 12);
+    yScale.domain([0, Math.max(4, maxSE * 1.1)]);
+
+    // Redraw y axis
+    gYAxis.call(yAxis)
+      .call(g => {
+        g.selectAll('line').attr('stroke', '#2a2a4a');
+        g.selectAll('text').attr('fill', '#888').attr('font-size', '10px');
+        g.select('.domain').attr('stroke', '#444');
+      });
+
+    const line = d3.line()
+      .x(d => xScale(d.r))
+      .y(d => yScale(d.se))
+      .curve(d3.curveBasis);
+
+    seCurvePath.attr('d', line(curveData));
+
+    const area = d3.area()
+      .x(d => xScale(d.r))
+      .y0(pltH)
+      .y1(d => yScale(d.se))
+      .curve(d3.curveBasis);
+    seArea.attr('d', area(curveData));
+
+    // Indicator
+    const dispSE = Math.min(se, yScale.domain()[1]);
+    indicator.attr('cx', xScale(r)).attr('cy', yScale(dispSE));
+    indicatorLine
+      .attr('x1', xScale(r)).attr('y1', yScale(dispSE))
+      .attr('x2', xScale(r)).attr('y2', pltH);
+    indicatorLineH
+      .attr('x1', 0).attr('y1', yScale(dispSE))
+      .attr('x2', xScale(r)).attr('y2', yScale(dispSE));
+
+    seLabel
+      .attr('x', xScale(r) + 10)
+      .attr('y', yScale(dispSE) - 8)
+      .text(se < 100 ? se.toFixed(2) : '> 100');
+
+    // ── Readouts ──
+    d3.select('#readR').text(r.toFixed(2));
+    d3.select('#readNorm').text(mx2Norm.toFixed(3))
+      .attr('class', 'value' + (mx2Norm < 0.2 ? ' warn' : mx2Norm < 0.5 ? ' mid' : ' ok'));
+    d3.select('#readSE').text(se < 100 ? se.toFixed(3) : '> 100')
+      .attr('class', 'value' + (se > 5 ? ' warn' : se > 2 ? ' mid' : ' ok'));
+    d3.select('#readVIF').text(vif < 1000 ? vif.toFixed(2) : '> 1000')
+      .attr('class', 'value' + (vif > 10 ? ' warn' : vif > 4 ? ' mid' : ' ok'));
+  }
+
+  // ── Event listeners ──
+  d3.select('#corrSlider').on('input', update);
+  d3.select('#noiseSlider').on('input', update);
+
+  // Tooltips
+  const tooltip = d3.select('#tooltip');
+  function showTip(evt, text) {
+    tooltip.style('opacity', 1)
+      .style('left', (evt.pageX + 12) + 'px')
+      .style('top', (evt.pageY - 20) + 'px')
+      .text(text);
+  }
+  function hideTip() { tooltip.style('opacity', 0); }
+
+  d3.select('#corrSlider')
+    .on('mouseenter', e => showTip(e, 'Controls the angle between x\u2081 and x\u2082. Higher |r| means more collinearity.'))
+    .on('mouseleave', hideTip);
+  d3.select('#noiseSlider')
+    .on('mouseenter', e => showTip(e, 'Scales the noise variance \u03C3\u00B2, which proportionally scales SE(\u03B2\u0302\u2082).'))
+    .on('mouseleave', hideTip);
+
+  // ── Initial draw ──
+  update();
+})();
+</script>
+</body>
+</html>
